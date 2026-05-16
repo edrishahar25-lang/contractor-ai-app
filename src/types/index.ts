@@ -123,6 +123,7 @@ export interface Project {
   property: Property;
   photoRefs: string[];
   blueprintRefs: string[];
+  archived?: boolean;
 }
 
 // ─── Settings ────────────────────────────────────────────────────────────────

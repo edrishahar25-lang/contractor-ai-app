@@ -118,6 +118,31 @@ const PRESETS: PresetDef[] = [
       { categoryId: 'drywall', itemId: 'dry_lower', quantity: 20 },
     ],
   },
+  {
+    id: 'electrical_package',
+    name: 'חשמל קומפלט',
+    items: [
+      { categoryId: 'electrical', itemId: 'elec_panel', quantity: 1 },
+      { categoryId: 'electrical', itemId: 'elec_point', quantity: 25 },
+      { categoryId: 'electrical', itemId: 'elec_light', quantity: 20 },
+      { categoryId: 'electrical', itemId: 'elec_power', quantity: 10 },
+      { categoryId: 'electrical', itemId: 'elec_comm', quantity: 5 },
+      { categoryId: 'electrical', itemId: 'elec_tv', quantity: 3 },
+      { categoryId: 'electrical', itemId: 'elec_ac_prep', quantity: 3 },
+    ],
+  },
+  {
+    id: 'plumbing_package',
+    name: 'אינסטלציה קומפלט',
+    items: [
+      { categoryId: 'plumbing', itemId: 'plumb_water', quantity: 8 },
+      { categoryId: 'plumbing', itemId: 'plumb_drain', quantity: 8 },
+      { categoryId: 'plumbing', itemId: 'plumb_toilet', quantity: 1 },
+      { categoryId: 'plumbing', itemId: 'plumb_sink', quantity: 1 },
+      { categoryId: 'plumbing', itemId: 'plumb_boiler', quantity: 1 },
+      { categoryId: 'plumbing', itemId: 'plumb_shower', quantity: 1 },
+    ],
+  },
 ];
 
 // ─── Component ────────────────────────────────────────────────────────────────

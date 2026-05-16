@@ -9,10 +9,23 @@ import {
   Clock,
   CheckCircle,
   AlertTriangle,
+  Copy,
+  Archive,
+  Send,
+  PenLine,
 } from 'lucide-react';
 import { useProjectStore } from '../../stores/projectStore';
 import { useSettingsStore } from '../../stores/settingsStore';
-import { formatCurrency, formatDate, STATUS_LABELS, STATUS_BADGE_CLASS, isExpired, PROPERTY_TYPE_LABELS, CONDITION_LABELS, FINISH_LABELS } from '../../lib/format';
+import {
+  formatCurrency,
+  formatDate,
+  STATUS_LABELS,
+  STATUS_BADGE_CLASS,
+  isExpired,
+  PROPERTY_TYPE_LABELS,
+  CONDITION_LABELS,
+  FINISH_LABELS,
+} from '../../lib/format';
 import { openWhatsApp } from '../../lib/whatsapp';
 import { Button, Card, CardHeader, CardBody, Badge, Alert } from '../../components/ui';
 import { ProjectStatus } from '../../types';
@@ -22,7 +35,14 @@ const ALLOWED_STATUS: ProjectStatus[] = ['draft', 'sent', 'signed', 'rejected', 
 export default function ProjectView() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { getProject, getCurrentVersion, setStatus, createNewVersion } = useProjectStore();
+  const {
+    getProject,
+    getCurrentVersion,
+    setStatus,
+    createNewVersion,
+    duplicateProject,
+    archiveProject,
+  } = useProjectStore();
   const { company } = useSettingsStore();
   const [creatingVersion, setCreatingVersion] = useState(false);
 
@@ -51,6 +71,16 @@ export default function ProjectView() {
     } finally {
       setCreatingVersion(false);
     }
+  }
+
+  function handleDuplicate() {
+    const newProject = duplicateProject(id!);
+    navigate(`/project/${newProject.id}`);
+  }
+
+  function handleArchive() {
+    archiveProject(id!);
+    navigate('/projects');
   }
 
   return (
@@ -91,6 +121,44 @@ export default function ProjectView() {
         </Alert>
       )}
 
+      {/* Quick workflow action buttons */}
+      <div className="flex flex-wrap gap-2 mb-3">
+        {project.status === 'draft' && (
+          <Button
+            variant="outline"
+            onClick={() => setStatus(project.id, 'sent')}
+          >
+            <Send size={16} />
+            סמן כנשלח
+          </Button>
+        )}
+        {project.status === 'sent' && (
+          <Button
+            variant="success"
+            onClick={() => setStatus(project.id, 'signed')}
+          >
+            <CheckCircle size={16} />
+            סמן כחתום
+          </Button>
+        )}
+        <Button
+          variant="outline"
+          onClick={handleDuplicate}
+        >
+          <Copy size={16} />
+          שכפל פרויקט
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="text-red-500 hover:text-red-600 hover:bg-red-50"
+          onClick={handleArchive}
+        >
+          <Archive size={15} />
+          העבר לארכיון
+        </Button>
+      </div>
+
       {/* Action bar */}
       <div className="flex flex-wrap gap-2 mb-5">
         <Button
@@ -121,6 +189,7 @@ export default function ProjectView() {
 
         {canEditDirectly && (
           <Button variant="outline" onClick={() => navigate('/project/new')}>
+            <PenLine size={16} />
             עריכה
           </Button>
         )}
@@ -137,28 +206,31 @@ export default function ProjectView() {
         )}
       </div>
 
-      {/* Status changer */}
+      {/* Status flow — collapsible manual updater */}
       <div className="card mb-5">
-        <CardHeader>
-          <span className="font-semibold text-slate-800 text-sm">שנה סטטוס</span>
-        </CardHeader>
-        <CardBody>
-          <div className="flex flex-wrap gap-2">
-            {ALLOWED_STATUS.map((s) => (
-              <button
-                key={s}
-                onClick={() => setStatus(project.id, s)}
-                className={`px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all
-                  ${project.status === s
-                    ? 'bg-slate-900 text-white border-slate-900'
-                    : 'border-gray-200 text-gray-600 hover:border-slate-400'
-                  }`}
-              >
-                {STATUS_LABELS[s]}
-              </button>
-            ))}
-          </div>
-        </CardBody>
+        <details>
+          <summary className="card-header cursor-pointer list-none select-none">
+            <span className="font-semibold text-slate-800 text-sm">עדכון סטטוס ידני</span>
+            <span className="text-xs text-gray-400">לחץ להרחבה</span>
+          </summary>
+          <CardBody>
+            <div className="flex flex-wrap gap-2">
+              {ALLOWED_STATUS.map((s) => (
+                <button
+                  key={s}
+                  onClick={() => setStatus(project.id, s)}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all
+                    ${project.status === s
+                      ? 'bg-slate-900 text-white border-slate-900'
+                      : 'border-gray-200 text-gray-600 hover:border-slate-400'
+                    }`}
+                >
+                  {STATUS_LABELS[s]}
+                </button>
+              ))}
+            </div>
+          </CardBody>
+        </details>
       </div>
 
       {/* Price summary */}

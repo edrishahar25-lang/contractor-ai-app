@@ -10,6 +10,10 @@ import {
   AlertTriangle,
   HardHat,
   ChevronLeft,
+  Tag,
+  Settings,
+  DollarSign,
+  Percent,
 } from 'lucide-react';
 import { useProjectStore } from '../stores/projectStore';
 import { useSettingsStore } from '../stores/settingsStore';
@@ -54,18 +58,43 @@ export default function Dashboard() {
   const { projects } = useProjectStore();
   const { isCompanyConfigured } = useSettingsStore();
 
-  const total = projects.length;
-  const drafts = projects.filter((p) => p.status === 'draft').length;
-  const sent = projects.filter((p) => p.status === 'sent').length;
-  const signed = projects.filter((p) => p.status === 'signed').length;
-  const expired = projects.filter((p) => isExpired(p.expiresAt) && p.status !== 'signed' && p.status !== 'completed').length;
+  // Filter out archived projects for stats
+  const activeProjects = projects.filter((p) => !p.archived);
 
-  const totalRevenue = projects.reduce((sum, p) => {
+  const total = activeProjects.length;
+  const drafts = activeProjects.filter((p) => p.status === 'draft').length;
+  const sent = activeProjects.filter((p) => p.status === 'sent').length;
+  const signed = activeProjects.filter((p) => p.status === 'signed').length;
+  const inProgress = activeProjects.filter((p) => p.status === 'in_progress').length;
+  const expired = activeProjects.filter(
+    (p) => isExpired(p.expiresAt) && p.status !== 'signed' && p.status !== 'completed',
+  ).length;
+
+  const totalRevenue = activeProjects.reduce((sum, p) => {
     const v = p.versions.find((v) => v.id === p.currentVersionId);
     return sum + (v?.result.total ?? 0);
   }, 0);
 
-  const withEstimates = projects.filter((p) =>
+  const signedRevenue = activeProjects
+    .filter((p) => p.status === 'signed')
+    .reduce((sum, p) => {
+      const v = p.versions.find((v) => v.id === p.currentVersionId);
+      return sum + (v?.result.total ?? 0);
+    }, 0);
+
+  const inProgressRevenue = activeProjects
+    .filter((p) => p.status === 'in_progress')
+    .reduce((sum, p) => {
+      const v = p.versions.find((v) => v.id === p.currentVersionId);
+      return sum + (v?.result.total ?? 0);
+    }, 0);
+
+  const conversionRate =
+    sent + signed > 0
+      ? `${((signed / (sent + signed)) * 100).toFixed(0)}%`
+      : '—';
+
+  const withEstimates = activeProjects.filter((p) =>
     p.versions.find((v) => v.id === p.currentVersionId),
   );
   const avgValue =
@@ -73,7 +102,7 @@ export default function Dashboard() {
       ? totalRevenue / withEstimates.length
       : 0;
 
-  const recent = projects.slice(0, 8);
+  const recent = activeProjects.slice(0, 8);
 
   return (
     <div className="page-container">
@@ -168,7 +197,63 @@ export default function Dashboard() {
           iconColor="text-red-600"
           sub={expired > 0 ? 'דרוש עדכון' : 'הכל תקין'}
         />
+        <StatCard
+          label="הכנסות חתומות"
+          value={signedRevenue > 0 ? formatCurrency(signedRevenue) : '—'}
+          icon={<DollarSign size={20} />}
+          iconBg="bg-green-100"
+          iconColor="text-green-600"
+          sub={inProgressRevenue > 0 ? `בביצוע: ${formatCurrency(inProgressRevenue)}` : undefined}
+        />
+        <StatCard
+          label="יחס המרה"
+          value={conversionRate}
+          icon={<Percent size={20} />}
+          iconBg="bg-purple-100"
+          iconColor="text-purple-600"
+          sub="נשלח→חתום"
+        />
+        <StatCard
+          label="בביצוע"
+          value={inProgress}
+          icon={<CheckCircle size={20} />}
+          iconBg="bg-amber-100"
+          iconColor="text-amber-700"
+        />
       </div>
+
+      {/* Quick actions */}
+      <Card className="mb-6">
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <HardHat size={17} className="text-slate-700" />
+            <h2 className="font-bold text-slate-800">פעולות מהירות</h2>
+          </div>
+        </CardHeader>
+        <div className="p-4 flex flex-wrap gap-3">
+          <Button
+            size="lg"
+            onClick={() => navigate('/project/new')}
+          >
+            <PlusCircle size={18} />
+            פרויקט חדש
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() => navigate('/pricing')}
+          >
+            <Tag size={16} />
+            מחירון
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() => navigate('/settings')}
+          >
+            <Settings size={16} />
+            הגדרות חברה
+          </Button>
+        </div>
+      </Card>
 
       {/* Recent projects */}
       <Card>
@@ -177,7 +262,7 @@ export default function Dashboard() {
             <FolderOpen size={17} className="text-slate-700" />
             <h2 className="font-bold text-slate-800">פרויקטים אחרונים</h2>
           </div>
-          {projects.length > 0 && (
+          {activeProjects.length > 0 && (
             <Button
               variant="ghost"
               size="sm"
@@ -189,7 +274,7 @@ export default function Dashboard() {
           )}
         </CardHeader>
 
-        {projects.length === 0 ? (
+        {activeProjects.length === 0 ? (
           <EmptyState
             icon={<HardHat size={30} />}
             title="עדיין אין פרויקטים"
@@ -217,7 +302,7 @@ export default function Dashboard() {
               <tbody>
                 {recent.map((p) => {
                   const v = p.versions.find((v) => v.id === p.currentVersionId);
-                  const expired = isExpired(p.expiresAt) && !['signed', 'completed'].includes(p.status);
+                  const isExp = isExpired(p.expiresAt) && !['signed', 'completed'].includes(p.status);
                   return (
                     <tr
                       key={p.id}
@@ -233,7 +318,7 @@ export default function Dashboard() {
                       </td>
                       <td className="hidden sm:table-cell text-sm text-gray-500">
                         {formatDate(p.createdAt)}
-                        {expired && (
+                        {isExp && (
                           <div className="text-xs text-red-500 font-medium">פג תוקף</div>
                         )}
                       </td>

@@ -29,6 +29,9 @@ interface ProjectStore {
   setStatus: (id: string, status: ProjectStatus) => void;
   // Version management
   createNewVersion: (projectId: string, notes?: string) => EstimateVersion;
+  // Duplicate / archive
+  duplicateProject: (id: string) => Project;
+  archiveProject: (id: string) => void;
   // Selectors
   getProject: (id: string) => Project | undefined;
   getCurrentVersion: (id: string) => EstimateVersion | undefined;
@@ -147,6 +150,55 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
     set({ projects: next });
 
     return newVersion;
+  },
+
+  duplicateProject: (id) => {
+    const source = get().projects.find((p) => p.id === id);
+    if (!source) throw new Error(`Project ${id} not found`);
+
+    const currentVersion = source.versions.find((v) => v.id === source.currentVersionId);
+    if (!currentVersion) throw new Error('Current version not found');
+
+    const newVersionId = uuid();
+    const newVersion: EstimateVersion = {
+      ...currentVersion,
+      id: newVersionId,
+      versionNumber: 1,
+      createdAt: new Date().toISOString(),
+      selectedItems: [...currentVersion.selectedItems],
+      autoAssumptionOverrides: { ...currentVersion.autoAssumptionOverrides },
+    };
+
+    const expiresAt = addDays(new Date(), 30).toISOString();
+
+    const newProject: Project = {
+      ...source,
+      id: uuid(),
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      status: 'draft',
+      expiresAt,
+      versions: [newVersion],
+      currentVersionId: newVersionId,
+      client: { ...source.client },
+      property: { ...source.property },
+      photoRefs: [],
+      blueprintRefs: [],
+      archived: false,
+    };
+
+    const next = [newProject, ...get().projects];
+    persistProjects(next);
+    set({ projects: next });
+    return newProject;
+  },
+
+  archiveProject: (id) => {
+    const next = get().projects.map((p) =>
+      p.id === id ? { ...p, archived: true, updatedAt: new Date().toISOString() } : p,
+    );
+    persistProjects(next);
+    set({ projects: next });
   },
 
   getProject: (id) => get().projects.find((p) => p.id === id),

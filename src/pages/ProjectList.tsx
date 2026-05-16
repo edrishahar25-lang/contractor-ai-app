@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { PlusCircle, FolderOpen, Search } from 'lucide-react';
+import { PlusCircle, FolderOpen, Search, Copy, Archive } from 'lucide-react';
 import { useProjectStore } from '../stores/projectStore';
 import { useSettingsStore } from '../stores/settingsStore';
 import { formatCurrency, formatDate, STATUS_LABELS, STATUS_BADGE_CLASS, isExpired } from '../lib/format';
@@ -19,12 +19,20 @@ const STATUS_FILTERS: { label: string; value: ProjectStatus | 'all' }[] = [
 
 export default function ProjectList() {
   const navigate = useNavigate();
-  const { projects, deleteProject } = useProjectStore();
+  const { projects, deleteProject, duplicateProject } = useProjectStore();
   const { isCompanyConfigured } = useSettingsStore();
   const [filter, setFilter] = useState<ProjectStatus | 'all'>('all');
   const [search, setSearch] = useState('');
+  const [showArchive, setShowArchive] = useState(false);
 
-  const filtered = projects.filter((p) => {
+  // Default: hide archived projects
+  const activeProjects = showArchive
+    ? projects
+    : projects.filter((p) => p.archived !== true);
+
+  const archivedCount = projects.filter((p) => p.archived === true).length;
+
+  const filtered = activeProjects.filter((p) => {
     if (filter !== 'all' && p.status !== filter) return false;
     if (search) {
       const q = search.toLowerCase();
@@ -37,12 +45,29 @@ export default function ProjectList() {
     return true;
   });
 
+  function handleDuplicate(e: React.MouseEvent, projectId: string) {
+    e.stopPropagation();
+    const newProject = duplicateProject(projectId);
+    navigate(`/project/${newProject.id}`);
+  }
+
   return (
     <div className="page-container">
       <div className="flex flex-wrap items-start justify-between gap-3 mb-6">
         <div>
           <h1 className="page-title">הצעות מחיר</h1>
-          <p className="page-subtitle">{projects.length} פרויקטים סה"כ</p>
+          <div className="flex items-center gap-3 mt-0.5">
+            <p className="page-subtitle !mb-0">{activeProjects.length} פרויקטים</p>
+            {archivedCount > 0 && (
+              <button
+                onClick={() => setShowArchive((v) => !v)}
+                className="btn btn-ghost btn-sm text-xs flex items-center gap-1"
+              >
+                <Archive size={13} />
+                {showArchive ? 'הסתר ארכיון' : `הצג ארכיון (${archivedCount})`}
+              </button>
+            )}
+          </div>
         </div>
         <Button
           size="lg"
@@ -80,7 +105,7 @@ export default function ProjectList() {
             {sf.label}
             {sf.value !== 'all' && (
               <span className="mr-1 opacity-60">
-                ({projects.filter((p) => p.status === sf.value).length})
+                ({activeProjects.filter((p) => p.status === sf.value).length})
               </span>
             )}
           </button>
@@ -92,6 +117,9 @@ export default function ProjectList() {
           <span className="font-bold text-slate-800">
             {filtered.length} הצעות
           </span>
+          {showArchive && (
+            <Badge variant="gray">כולל ארכיון</Badge>
+          )}
         </CardHeader>
 
         {filtered.length === 0 ? (
@@ -133,11 +161,14 @@ export default function ProjectList() {
                   return (
                     <tr
                       key={p.id}
-                      className="cursor-pointer"
+                      className={`cursor-pointer ${p.archived ? 'opacity-60' : ''}`}
                       onClick={() => navigate(`/project/${p.id}`)}
                     >
                       <td>
-                        <div className="font-semibold text-slate-800">{p.client.name}</div>
+                        <div className="font-semibold text-slate-800 flex items-center gap-1.5">
+                          {p.client.name}
+                          {p.archived && <Archive size={12} className="text-gray-400" />}
+                        </div>
                         <div className="text-xs text-gray-400">{p.client.phone}</div>
                         {expired && (
                           <div className="text-xs text-red-500 font-medium mt-0.5">פג תוקף</div>
@@ -171,6 +202,15 @@ export default function ProjectList() {
                             }}
                           >
                             פתח
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            title="שכפל"
+                            onClick={(e) => handleDuplicate(e, p.id)}
+                          >
+                            <Copy size={14} />
+                            שכפל
                           </Button>
                           <Button
                             variant="ghost"

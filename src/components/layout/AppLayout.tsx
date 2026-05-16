@@ -37,7 +37,7 @@ export default function AppLayout() {
   return (
     <div className="flex min-h-screen bg-gray-50">
       {/* ── Desktop Sidebar ─────────────────── */}
-      <aside className="hidden lg:flex flex-col fixed right-0 top-0 bottom-0 w-60 bg-slate-900 z-40">
+      <aside className="no-print hidden lg:flex flex-col fixed right-0 top-0 bottom-0 w-60 bg-slate-900 z-40">
         {/* Logo */}
         <button
           onClick={() => navigate('/')}
@@ -108,14 +108,14 @@ export default function AppLayout() {
       {/* ── Mobile overlay ───────────────────── */}
       {drawerOpen && (
         <div
-          className="fixed inset-0 bg-black/50 z-50 lg:hidden"
+          className="no-print fixed inset-0 bg-black/50 z-50 lg:hidden"
           onClick={() => setDrawerOpen(false)}
         />
       )}
 
       {/* ── Mobile Drawer ────────────────────── */}
       <aside
-        className={`fixed top-0 right-0 bottom-0 w-72 bg-slate-900 z-50 lg:hidden flex flex-col
+        className={`no-print fixed top-0 right-0 bottom-0 w-72 bg-slate-900 z-50 lg:hidden flex flex-col
           transition-transform duration-250 ${drawerOpen ? 'translate-x-0' : 'translate-x-full'}`}
       >
         <div className="flex items-center justify-between px-5 py-4 border-b border-white/10">
@@ -182,7 +182,7 @@ export default function AppLayout() {
       {/* ── Main content ─────────────────────── */}
       <div className="flex-1 flex flex-col lg:mr-60">
         {/* Mobile top bar */}
-        <header className="lg:hidden sticky top-0 z-30 flex items-center justify-between px-4 h-14 bg-slate-900 shadow-md">
+        <header className="no-print lg:hidden sticky top-0 z-30 flex items-center justify-between px-4 h-14 bg-slate-900 shadow-md">
           <button
             className="p-2 rounded-lg text-white/70 hover:text-white hover:bg-white/10 transition-colors"
             onClick={() => setDrawerOpen(true)}
@@ -202,7 +202,7 @@ export default function AppLayout() {
         </main>
 
         {/* Mobile bottom nav */}
-        <nav className="lg:hidden fixed bottom-0 left-0 right-0 h-16 bg-slate-900 border-t border-white/10 flex z-30">
+        <nav className="no-print lg:hidden fixed bottom-0 left-0 right-0 h-16 bg-slate-900 border-t border-white/10 flex z-30">
           {NAV_ITEMS.slice(0, 5).map((item) => {
             const Icon = item.icon;
             const active = isActive(item.to, item.end);
