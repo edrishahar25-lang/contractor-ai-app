@@ -2,10 +2,11 @@ import { useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   MonitorSmartphone, Upload, Trash2, PlusCircle, Link2, ArrowUpRight,
-  AlertTriangle, CheckCircle2, FileText,
+  AlertTriangle, CheckCircle2, FileText, Sparkles, Loader,
 } from 'lucide-react';
 import { useBlueprintStore } from '../../stores/blueprintStore';
 import { useProjectStore } from '../../stores/projectStore';
+import { useSettingsStore } from '../../stores/settingsStore';
 import BlueprintUploadZone from '../../components/blueprint/BlueprintUploadZone';
 import BlueprintToolbar from '../../components/blueprint/BlueprintToolbar';
 import BlueprintCanvas, { type BlueprintCanvasHandle } from '../../components/blueprint/BlueprintCanvas';
@@ -13,7 +14,19 @@ import BlueprintBOQPanel from '../../components/blueprint/BlueprintBOQPanel';
 import CreateProjectFromBlueprintModal from '../../components/blueprint/CreateProjectFromBlueprintModal';
 import LinkProjectModal from '../../components/blueprint/LinkProjectModal';
 import PushToEstimateModal from '../../components/blueprint/PushToEstimateModal';
+import BlueprintAiReview from '../../features/blueprint-ai/BlueprintAiReview';
+import {
+  analyzeBlueprint,
+  aiAnalysisToEstimationBrief,
+} from '../../features/blueprint-ai/blueprintAiService';
+import type {
+  AiAnalysisState,
+  AiBlueprintAnalysis,
+} from '../../features/blueprint-ai/blueprintAiTypes';
+import { generateBOQFromBrief, boqItemsToSelectedItems } from '../../lib/boqGenerator';
+import { calculateAutoAssumptions } from '../../lib/pricingEngine';
 import type { BpFile } from '../../types/blueprint';
+import type { Property } from '../../types';
 
 export default function BlueprintPage() {
   const navigate = useNavigate();
@@ -25,7 +38,8 @@ export default function BlueprintPage() {
     setActiveTool, toggleBOQ, clearAll,
   } = useBlueprintStore();
 
-  const { getProject } = useProjectStore();
+  const { getProject, createProject } = useProjectStore();
+  const { pricing } = useSettingsStore();
   const linkedProject = linkedProjectId ? getProject(linkedProjectId) : undefined;
 
   const [file, setFile] = useState<BpFile | null>(null);
@@ -35,6 +49,65 @@ export default function BlueprintPage() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showLinkModal, setShowLinkModal] = useState(false);
   const [showPushModal, setShowPushModal] = useState(false);
+
+  // ── AI analysis state ─────────────────────────────────────────────────────
+
+  const [analysisState, setAnalysisState] = useState<AiAnalysisState>({
+    status: 'idle',
+    analysis: null,
+    error: null,
+    isMock: false,
+  });
+  const [showReview, setShowReview] = useState(false);
+
+  async function handleAnalyze() {
+    if (!file) return;
+    setAnalysisState({ status: 'analyzing', analysis: null, error: null, isMock: false });
+    try {
+      const { analysis, isMock } = await analyzeBlueprint(file.dataUrl, file.name);
+      setAnalysisState({ status: 'review', analysis, error: null, isMock });
+      setShowReview(true);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'שגיאה לא ידועה בניתוח התוכנית';
+      setAnalysisState({ status: 'error', analysis: null, error: msg, isMock: false });
+    }
+  }
+
+  function handleBackFromReview() {
+    setShowReview(false);
+  }
+
+  async function handleApproveAnalysis(
+    approvedAnalysis: AiBlueprintAnalysis,
+    client: { name: string; phone: string; address: string; city: string },
+  ) {
+    const brief = aiAnalysisToEstimationBrief(approvedAnalysis);
+    const property: Property = {
+      type: 'apartment',
+      totalSqm: brief.totalSqm,
+      rooms: brief.rooms,
+      bathrooms: brief.bathrooms,
+      toilets: brief.toilets,
+      kitchens: brief.kitchens,
+      balconies: brief.balconies,
+      ceilingHeight: 2.7,
+      hasElevator: false,
+      hasParking: false,
+      condition: brief.condition,
+      finishLevel: brief.finishLevel,
+    };
+    const { items } = generateBOQFromBrief(brief, pricing);
+    const selectedItems = boqItemsToSelectedItems(items);
+    const autoOverrides = calculateAutoAssumptions(property);
+    const project = createProject(
+      { name: client.name, phone: client.phone, address: client.address, city: client.city },
+      property,
+      selectedItems,
+      autoOverrides,
+      'נוצר מניתוח תוכנית AI',
+    );
+    navigate(`/project/${project.id}/boq`);
+  }
 
   function handleNewFile(f: BpFile) {
     if (f.fileType === 'pdf') {
@@ -86,10 +159,11 @@ export default function BlueprintPage() {
     return (
       <div className="page-container">
         {/* Value messaging */}
-        <h1 className="page-title mb-1">תמחור מבוסס תוכנית בנייה</h1>
-        <p className="page-subtitle mb-5">
-          העלה תוכנית, סמן חדרים ועבודות, והמערכת תחשב כמויות ותעביר אותן להצעת מחיר.
+        <h1 className="page-title mb-1">העלה תוכנית מקור וקבל כתב כמויות</h1>
+        <p className="page-subtitle mb-1">
+          המערכת מנתחת תוכניות מקור, מציעה כתב כמויות, והקבלן רק מאשר ומתקן.
         </p>
+        <p className="text-xs text-gray-400 mb-5">כלי ציור ידני זמין לתיקונים לאחר הניתוח האוטומטי.</p>
 
         <div className="md:hidden flex items-start gap-3 p-3 bg-amber-50 border border-amber-200 rounded-xl mb-4">
           <MonitorSmartphone size={18} className="text-amber-500 flex-shrink-0 mt-0.5" />
@@ -100,10 +174,10 @@ export default function BlueprintPage() {
 
         <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-3">
           {[
-            { color: 'bg-amber-100 text-amber-700',   title: '1. העלה תוכנית',    desc: 'PNG, JPG' },
-            { color: 'bg-blue-100 text-blue-700',     title: '2. כייל קנה מידה',  desc: 'לחץ 2 נקודות → הזן מרחק' },
-            { color: 'bg-green-100 text-green-700',   title: '3. סמן חדרים',      desc: 'מלבן או פולגון חופשי' },
-            { color: 'bg-purple-100 text-purple-700', title: '4. הפק הצעת מחיר',  desc: 'כמויות → הצעה → לקוח' },
+            { color: 'bg-amber-100 text-amber-700',   title: '1. העלה תוכנית',        desc: 'PNG, JPG, PDF' },
+            { color: 'bg-purple-100 text-purple-700', title: '2. נתח אוטומטית',       desc: 'לחץ "נתח תוכנית" → המערכת קוראת את התוכנית' },
+            { color: 'bg-blue-100 text-blue-700',     title: '3. אשר ותקן',           desc: 'בדוק חדרים וכמויות — ערוך לפי הצורך' },
+            { color: 'bg-green-100 text-green-700',   title: '4. הפק הצעת מחיר',      desc: 'כתב כמויות → הצעה → לקוח' },
           ].map((s, i) => (
             <div key={i} className={`rounded-xl p-3 ${s.color.split(' ')[0]} border border-current/20`}>
               <p className={`font-bold text-sm ${s.color.split(' ')[1]}`}>{s.title}</p>
@@ -184,6 +258,38 @@ export default function BlueprintPage() {
           </div>
         )}
 
+        {/* Analysis error */}
+        {analysisState.status === 'error' && (
+          <div className="text-xs text-red-400 flex-shrink-0">⚠ {analysisState.error}</div>
+        )}
+
+        <div className="w-px h-5 bg-slate-600 flex-shrink-0" />
+
+        {/* ── AI Analyze button ── */}
+        {analysisState.status === 'analyzing' ? (
+          <div className="flex items-center gap-1.5 text-xs text-purple-300 flex-shrink-0">
+            <Loader size={13} className="animate-spin" />
+            <span className="hidden sm:inline">מנתח תוכנית...</span>
+          </div>
+        ) : analysisState.status === 'review' ? (
+          <button
+            onClick={() => setShowReview(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-purple-600 text-white hover:bg-purple-500 transition-colors flex-shrink-0"
+          >
+            <CheckCircle2 size={13} />
+            <span>תוצאות ניתוח</span>
+          </button>
+        ) : (
+          <button
+            onClick={handleAnalyze}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-purple-600 text-white hover:bg-purple-500 transition-colors flex-shrink-0"
+          >
+            <Sparkles size={13} />
+            <span className="hidden sm:inline">נתח תוכנית אוטומטית</span>
+            <span className="sm:hidden">נתח</span>
+          </button>
+        )}
+
         <div className="w-px h-5 bg-slate-600 flex-shrink-0" />
 
         {/* Action buttons */}
@@ -235,26 +341,38 @@ export default function BlueprintPage() {
 
       {/* Workspace row */}
       <div className="flex flex-1 min-h-0 relative">
-        {/* Canvas */}
-        <BlueprintCanvas
-          ref={canvasRef}
-          file={file}
-          onSelectChange={(id, type) => { setSelectedId(id); setSelectedType(type); }}
-          onScaleChange={setDisplayScale}
-        />
-
-        {/* BOQ Panel */}
-        {showBOQ && (
-          <div className="w-72 flex-shrink-0 border-l border-gray-200 overflow-hidden hidden md:flex flex-col">
-            <BlueprintBOQPanel
+        {showReview && analysisState.analysis ? (
+          /* ── AI Review screen (replaces canvas) ── */
+          <BlueprintAiReview
+            analysis={analysisState.analysis}
+            isMock={analysisState.isMock}
+            onApprove={handleApproveAnalysis}
+            onBack={handleBackFromReview}
+          />
+        ) : (
+          <>
+            {/* Canvas */}
+            <BlueprintCanvas
+              ref={canvasRef}
               file={file}
-              onClose={toggleBOQ}
-              onPushToEstimate={() => {
-                if (!hasLinkedProject) setShowCreateModal(true);
-                else setShowPushModal(true);
-              }}
+              onSelectChange={(id, type) => { setSelectedId(id); setSelectedType(type); }}
+              onScaleChange={setDisplayScale}
             />
-          </div>
+
+            {/* BOQ Panel */}
+            {showBOQ && (
+              <div className="w-72 flex-shrink-0 border-l border-gray-200 overflow-hidden hidden md:flex flex-col">
+                <BlueprintBOQPanel
+                  file={file}
+                  onClose={toggleBOQ}
+                  onPushToEstimate={() => {
+                    if (!hasLinkedProject) setShowCreateModal(true);
+                    else setShowPushModal(true);
+                  }}
+                />
+              </div>
+            )}
+          </>
         )}
       </div>
 

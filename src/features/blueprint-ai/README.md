@@ -1,43 +1,81 @@
-# Blueprint AI — Future Integration
+# Blueprint Auto-Analysis
 
-This folder is reserved for AI-assisted blueprint analysis.
+## Core product principle
 
-## Planned flow
+The contractor should **never** have to manually redraw a plan they already have.
 
-1. Contractor uploads a plan image or PDF
-2. Image is sent to an AI endpoint (vision model)
-3. AI returns detected rooms, walls, and work points as structured JSON
-4. The app renders AI suggestions as a semi-transparent overlay on the canvas
-5. Contractor reviews: approves, corrects, or deletes each suggestion
-6. Approved suggestions are converted to rooms/annotations and enter the BOQ pipeline exactly like manual markings
+Primary workflow:
+1. Upload original construction plan (PNG/JPG/PDF)
+2. Click "נתח תוכנית אוטומטית" → AI/OCR reads the plan
+3. System extracts rooms, dimensions, and work quantities with confidence scores
+4. Contractor reviews, edits, and approves on the **BlueprintAiReview** screen
+5. Approved analysis → BOQ items → BOQ review → estimate → proposal
 
-## Suggested AI response schema
+Manual drawing tools remain available as **correction tools only** (fix missing room, add electrical point, etc.)
+
+---
+
+## Files
+
+| File | Purpose |
+|---|---|
+| `blueprintAiTypes.ts` | All TypeScript types for AI analysis |
+| `blueprintAiService.ts` | Service adapter: mock now, real endpoint when ready |
+| `blueprintAiPrompt.ts` | Backend-only prompt template (version-controlled here) |
+| `BlueprintAiReview.tsx` | Review UI: approve / edit / reject per room and work item |
+| `useBlueprintAiPlaceholder.ts` | Deprecated stub — use `analyzeBlueprint()` directly |
+
+---
+
+## AI output schema
 
 ```typescript
-interface AiBlueprintResponse {
-  rooms: AiRoomSuggestion[];
-  walls: AiWallSuggestion[];
-  points: AiPointSuggestion[];
-  confidence: number; // 0–1
-  warnings: string[];
+interface AiBlueprintAnalysis {
+  rooms: AiDetectedRoom[];             // detected rooms with sqm + confidence
+  measurements: AiDetectedMeasurement[]; // key dimensions from the plan
+  detectedWorkItems: AiDetectedWorkItem[]; // electrical/plumbing/AC quantities
+  missingInfoQuestions: string[];      // what the AI couldn't determine
+  globalWarnings: string[];            // calibration warnings, etc.
 }
 ```
 
-## Integration points
+Each item has a `confidence: number (0–1)` and `status: 'pending' | 'approved' | 'edited' | 'rejected'`.
 
-- `useBlueprintAiPlaceholder.ts` — stub hook, replace with real API call when ready
-- `blueprintAiTypes.ts` — shared types for AI suggestions
-- BlueprintCanvas already has a preview layer (Layer 3) that can render suggestion overlays
-- BOQ pipeline in `src/lib/blueprintBOQ.ts` is AI-agnostic; approved suggestions feed in as normal rooms/annotations
+---
 
-## What is NOT implemented yet
+## What is REAL vs MOCK
 
-- No real AI endpoint call
-- No image pre-processing
-- No suggestion overlay rendering
-- No approval/correction UI
+| Feature | Status |
+|---|---|
+| Upload flow + status UI | ✅ Real |
+| Review screen (approve/edit/reject) | ✅ Real |
+| BOQ conversion from approved analysis | ✅ Real |
+| AI analysis result | ⚠️ Mock (realistic 5-room apartment data) |
+| `/api/blueprint/analyze` endpoint | ❌ Not built yet |
 
-## Why this structure
+The mock produces a 10-room, ~126 sqm apartment. Toggle `USE_MOCK = false` in `blueprintAiService.ts` when the backend is ready.
 
-Keeps AI concerns isolated. When AI is ready, only this folder and `BlueprintCanvas.tsx` need to change.
-The rest of the app (BOQ, pricing, proposal) stays untouched.
+---
+
+## Backend integration (when AI endpoint is ready)
+
+1. Create `/api/blueprint/analyze` on the backend
+2. Backend receives `{ dataUrl, fileName }` as JSON
+3. Backend calls AI vision model (Claude, GPT-4V, etc.) with `BLUEPRINT_ANALYSIS_SYSTEM_PROMPT`
+4. Backend parses JSON response and validates against the schema
+5. Backend returns `AiBlueprintAnalysis` JSON to the frontend
+6. Set `USE_MOCK = false` in `blueprintAiService.ts`
+
+**API key is NEVER stored in the frontend.**
+
+---
+
+## Contractor approval is mandatory
+
+AI suggestions never enter an estimate automatically. The flow always requires:
+1. Contractor opens the review screen
+2. Approves or edits rooms and work items
+3. Fills in client info
+4. Clicks "אשר ובנה כתב כמויות"
+
+Only then are items passed to `generateBOQFromBrief()` and the BOQ review page.

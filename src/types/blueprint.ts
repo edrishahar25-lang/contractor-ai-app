@@ -30,6 +30,7 @@ export interface BpRoom {
   id: string;
   name: string;
   polygonPoints: BpPoint[];
+  pixelArea: number;
   calculatedSqm: number;
   drawType: 'rectangle' | 'polygon';
 }

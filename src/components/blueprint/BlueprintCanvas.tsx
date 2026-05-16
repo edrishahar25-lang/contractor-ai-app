@@ -12,6 +12,9 @@ import CalibrationDialog from './CalibrationDialog';
 import RoomNameDialog from './RoomNameDialog';
 import type { BpAnnotationType, BpFile, BpPoint } from '../../types/blueprint';
 
+// ─── Debug: set to true to show the measurement debug panel ──────────────────
+const DEBUG_MEASUREMENTS = true;
+
 // ─── Annotation visual config ─────────────────────────────────────────────────
 
 const ANN_CFG: Record<BpAnnotationType, { fill: string; stroke: string; label: string }> = {
@@ -51,7 +54,7 @@ const BlueprintCanvas = forwardRef<BlueprintCanvasHandle, Props>(
   ({ file, onSelectChange, onScaleChange }, ref) => {
     const {
       activeTool, calibration, rooms, annotations,
-      setCalibration, addRoom, deleteRoom, addAnnotation, deleteAnnotation,
+      setCalibration, addRoom, deleteRoom, addAnnotation, deleteAnnotation, updateAllRoomSqm,
     } = useBlueprintStore();
 
     const stageRef = useRef<any>(null);
@@ -164,12 +167,16 @@ const BlueprintCanvas = forwardRef<BlueprintCanvasHandle, Props>(
       setPosState(newPos);
     }
 
-    function getCanvasPos(_e: KonvaEventObject<MouseEvent>): BpPoint {
-      const stage = stageRef.current;
-      if (!stage) return { x: 0, y: 0 };
-      const ptr = stage.getPointerPosition();
-      if (!ptr) return { x: 0, y: 0 };
-      return { x: (ptr.x - pos.x) / scale, y: (ptr.y - pos.y) / scale };
+    // Convert a native mouse event to canvas (image pixel) coordinates.
+    // Uses containerRef directly — the same element fitToScreen uses — to avoid
+    // any mismatch between Konva's internal container and our outer wrapper div.
+    function getCanvasPos(e: KonvaEventObject<MouseEvent>): BpPoint {
+      const container = containerRef.current;
+      if (!container) return { x: 0, y: 0 };
+      const rect = container.getBoundingClientRect();
+      const screenX = e.evt.clientX - rect.left;
+      const screenY = e.evt.clientY - rect.top;
+      return { x: (screenX - pos.x) / scale, y: (screenY - pos.y) / scale };
     }
 
     function cancelDrawing() {
@@ -259,7 +266,7 @@ const BlueprintCanvas = forwardRef<BlueprintCanvasHandle, Props>(
       const { polygonPoints, pixelArea, drawType } = pendingRoom;
       const ppm = calibration.pixelsPerMeter;
       const sqm = ppm ? pixelArea / (ppm * ppm) : 0;
-      addRoom({ id: uuidv4(), name, polygonPoints, calculatedSqm: sqm, drawType });
+      addRoom({ id: uuidv4(), name, polygonPoints, pixelArea, calculatedSqm: sqm, drawType });
       setPendingRoom(null);
       setShowRoomDialog(false);
     }
@@ -291,21 +298,32 @@ const BlueprintCanvas = forwardRef<BlueprintCanvasHandle, Props>(
       return () => window.removeEventListener('keydown', handleKey);
     }, [selectedId, selectedType]);
 
+    // ── Recalculate all room sqm when calibration changes ────────────────────
+    useEffect(() => {
+      const ppm = calibration.pixelsPerMeter;
+      if (ppm && rooms.length > 0) {
+        updateAllRoomSqm(ppm);
+      }
+    // rooms intentionally omitted: only recalculate when ppm changes, not when rooms change
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [calibration.pixelsPerMeter]);
+
     // ── Stage events ─────────────────────────────────────────────────────────
 
     function handleWheel(e: KonvaEventObject<WheelEvent>) {
       e.evt.preventDefault();
-      const stage = stageRef.current;
-      if (!stage) return;
-      const ptr = stage.getPointerPosition();
-      if (!ptr) return;
+      const container = containerRef.current;
+      if (!container) return;
+      const rect = container.getBoundingClientRect();
+      const screenX = e.evt.clientX - rect.left;
+      const screenY = e.evt.clientY - rect.top;
       const oldScale = scale;
       const dir = e.evt.deltaY > 0 ? -1 : 1;
       const newScale = Math.min(Math.max(dir > 0 ? oldScale * 1.15 : oldScale / 1.15, 0.05), 20);
-      const mouseCanvasX = (ptr.x - pos.x) / oldScale;
-      const mouseCanvasY = (ptr.y - pos.y) / oldScale;
+      const mouseCanvasX = (screenX - pos.x) / oldScale;
+      const mouseCanvasY = (screenY - pos.y) / oldScale;
       setScale(newScale);
-      setPosState({ x: ptr.x - mouseCanvasX * newScale, y: ptr.y - mouseCanvasY * newScale });
+      setPosState({ x: screenX - mouseCanvasX * newScale, y: screenY - mouseCanvasY * newScale });
     }
 
     function handleMouseDown(e: KonvaEventObject<MouseEvent>) {
@@ -325,11 +343,12 @@ const BlueprintCanvas = forwardRef<BlueprintCanvasHandle, Props>(
     }
 
     function handleMouseMove(e: KonvaEventObject<MouseEvent>) {
-      const stage = stageRef.current;
-      if (!stage) return;
-      const ptr = stage.getPointerPosition();
-      if (!ptr) return;
-      const cp = { x: (ptr.x - pos.x) / scale, y: (ptr.y - pos.y) / scale };
+      const container = containerRef.current;
+      if (!container) return;
+      const rect = container.getBoundingClientRect();
+      const screenX = e.evt.clientX - rect.left;
+      const screenY = e.evt.clientY - rect.top;
+      const cp = { x: (screenX - pos.x) / scale, y: (screenY - pos.y) / scale };
       setCursorPos(cp);
 
       if (isPanning && panStart.current) {
@@ -663,6 +682,72 @@ const BlueprintCanvas = forwardRef<BlueprintCanvasHandle, Props>(
             )}
           </Layer>
         </Stage>
+
+        {/* ── Debug panel ──────────────────────────────────────────────────── */}
+        {DEBUG_MEASUREMENTS && (
+          <div
+            className="absolute bottom-2 left-2 z-40 bg-black/80 text-white text-xs font-mono rounded-lg p-3 max-w-xs leading-relaxed"
+            dir="ltr"
+          >
+            <div className="font-bold text-yellow-400 mb-1">📐 MEASUREMENT DEBUG</div>
+            <div>scale: <span className="text-green-300">{scale.toFixed(4)}</span></div>
+            <div>pos: <span className="text-green-300">({pos.x.toFixed(1)}, {pos.y.toFixed(1)})</span></div>
+            <div>img: <span className="text-green-300">{file?.naturalWidth ?? '?'}×{file?.naturalHeight ?? '?'}px</span></div>
+            <div className="mt-1 border-t border-white/20 pt-1">
+              {calibration.pixelsPerMeter != null ? (
+                <>
+                  <div>ppm: <span className="text-cyan-300 font-bold">{calibration.pixelsPerMeter.toFixed(2)} px/m</span></div>
+                  {calibration.refPoint1 && calibration.refPoint2 && (
+                    <div>
+                      calib px dist: <span className="text-cyan-300">
+                        {Math.hypot(
+                          calibration.refPoint2.x - calibration.refPoint1.x,
+                          calibration.refPoint2.y - calibration.refPoint1.y,
+                        ).toFixed(1)}
+                      </span>
+                    </div>
+                  )}
+                  {calibration.refPoint1 && calibration.refPoint2 && (
+                    <div>
+                      calib meters: <span className="text-cyan-300">
+                        {(Math.hypot(
+                          calibration.refPoint2.x - calibration.refPoint1.x,
+                          calibration.refPoint2.y - calibration.refPoint1.y,
+                        ) / calibration.pixelsPerMeter).toFixed(2)} m
+                      </span>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <div className="text-red-400">⚠ NOT CALIBRATED</div>
+              )}
+            </div>
+            {rooms.length > 0 && (
+              <div className="mt-1 border-t border-white/20 pt-1">
+                {rooms.map((r) => {
+                  const rawPx = r.pixelArea > 0
+                    ? r.pixelArea
+                    : polygonAreaPixels(r.polygonPoints);
+                  const ppm = calibration.pixelsPerMeter;
+                  const recomputed = ppm ? rawPx / (ppm * ppm) : 0;
+                  return (
+                    <div key={r.id} className="mb-0.5">
+                      <span className="text-yellow-300">{r.name}:</span>
+                      {' '}raw=<span className="text-orange-300">{rawPx.toFixed(0)}px²</span>
+                      {' '}stored=<span className="text-purple-300">{r.calculatedSqm.toFixed(2)}m²</span>
+                      {' '}now=<span className="text-green-300">{recomputed.toFixed(2)}m²</span>
+                    </div>
+                  );
+                })}
+                <div className="mt-0.5 font-bold">
+                  total: <span className="text-green-400">
+                    {rooms.reduce((s, r) => s + r.calculatedSqm, 0).toFixed(2)} m²
+                  </span>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Dialogs */}
         {showCalibDialog && (

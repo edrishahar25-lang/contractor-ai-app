@@ -1,45 +1,67 @@
-export type AiSuggestionStatus = 'pending' | 'approved' | 'rejected';
+// ─── Analysis status flow ─────────────────────────────────────────────────────
 
-export interface AiRoomSuggestion {
+export type AiAnalysisStatus = 'idle' | 'analyzing' | 'review' | 'error';
+
+export type RoomType =
+  | 'living'
+  | 'bedroom'
+  | 'bathroom'
+  | 'toilet'
+  | 'kitchen'
+  | 'balcony'
+  | 'hallway'
+  | 'other';
+
+export type SuggestionStatus = 'pending' | 'approved' | 'edited' | 'rejected';
+
+// ─── Per-line result types ────────────────────────────────────────────────────
+
+export interface AiDetectedRoom {
   id: string;
-  type: 'room';
-  status: AiSuggestionStatus;
   name: string;
-  roomType: string;
-  points: { x: number; y: number }[];
-  confidence: number;
+  type: RoomType;
+  estimatedSqm: number;
+  confidence: number;           // 0–1
+  sourceText?: string;          // raw text from blueprint OCR
+  warnings?: string[];
+  status: SuggestionStatus;
 }
 
-export interface AiWallSuggestion {
+export interface AiDetectedMeasurement {
   id: string;
-  type: 'wall';
-  status: AiSuggestionStatus;
-  wallType: 'demolition' | 'new';
-  points: { x: number; y: number }[];
+  label: string;
+  valueMeters: number;
   confidence: number;
+  status: SuggestionStatus;
 }
 
-export interface AiPointSuggestion {
+export interface AiDetectedWorkItem {
   id: string;
-  type: 'point';
-  status: AiSuggestionStatus;
-  annotationType: string;
-  x: number;
-  y: number;
+  categoryId: string;
+  itemId: string;
+  quantity: number;
+  unit: 'sqm' | 'meter' | 'unit' | 'complete';
   confidence: number;
+  reasoningSummary: string;
+  warnings?: string[];
+  status: SuggestionStatus;
 }
 
-export type AiSuggestion = AiRoomSuggestion | AiWallSuggestion | AiPointSuggestion;
+// ─── Full analysis result ─────────────────────────────────────────────────────
 
-export interface AiBlueprintResponse {
-  suggestions: AiSuggestion[];
-  confidence: number;
-  warnings: string[];
+export interface AiBlueprintAnalysis {
+  rooms: AiDetectedRoom[];
+  measurements: AiDetectedMeasurement[];
+  detectedWorkItems: AiDetectedWorkItem[];
+  missingInfoQuestions: string[];
+  globalWarnings: string[];
 }
 
-export interface AiBlueprintState {
-  isLoading: boolean;
+// ─── State shape managed by BlueprintPage ─────────────────────────────────────
+
+export interface AiAnalysisState {
+  status: AiAnalysisStatus;
+  analysis: AiBlueprintAnalysis | null;
   error: string | null;
-  suggestions: AiSuggestion[];
-  lastAnalyzedAt: string | null;
+  isMock: boolean;
 }

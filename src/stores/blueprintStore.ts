@@ -16,6 +16,7 @@ interface BlueprintState {
   setCalibration: (c: BpCalibration) => void;
   addRoom: (r: BpRoom) => void;
   deleteRoom: (id: string) => void;
+  updateAllRoomSqm: (ppm: number) => void;
   addAnnotation: (a: BpAnnotation) => void;
   deleteAnnotation: (id: string) => void;
   setActiveTool: (t: BlueprintToolType) => void;
@@ -39,6 +40,12 @@ export const useBlueprintStore = create<BlueprintState>()(
       setCalibration: (c) => set({ calibration: c }),
       addRoom: (r) => set((s) => ({ rooms: [...s.rooms, r] })),
       deleteRoom: (id) => set((s) => ({ rooms: s.rooms.filter((r) => r.id !== id) })),
+      updateAllRoomSqm: (ppm) => set((s) => ({
+        rooms: s.rooms.map((r) => ({
+          ...r,
+          calculatedSqm: r.pixelArea > 0 ? r.pixelArea / (ppm * ppm) : r.calculatedSqm,
+        })),
+      })),
       addAnnotation: (a) => set((s) => ({ annotations: [...s.annotations, a] })),
       deleteAnnotation: (id) => set((s) => ({ annotations: s.annotations.filter((a) => a.id !== id) })),
       setActiveTool: (t) => set({ activeTool: t }),
