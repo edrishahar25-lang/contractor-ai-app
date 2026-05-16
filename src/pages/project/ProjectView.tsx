@@ -1,9 +1,8 @@
+import { useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useState } from 'react';
 import {
   ArrowLeft,
   TrendingUp,
-  FileText,
   MessageCircle,
   Plus,
   Clock,
@@ -13,6 +12,9 @@ import {
   Archive,
   Send,
   PenLine,
+  Download,
+  Loader,
+  AlertCircle,
 } from 'lucide-react';
 import { useProjectStore } from '../../stores/projectStore';
 import { useSettingsStore } from '../../stores/settingsStore';
@@ -29,6 +31,10 @@ import {
 import { openWhatsApp } from '../../lib/whatsapp';
 import { Button, Card, CardHeader, CardBody, Badge, Alert } from '../../components/ui';
 import { ProjectStatus } from '../../types';
+import { ProposalDocument } from '../../components/proposal/ProposalDocument';
+import { generateProposalPdf, downloadFile } from '../../lib/proposalPdf';
+
+type PdfStatus = 'idle' | 'generating' | 'success' | 'error';
 
 const ALLOWED_STATUS: ProjectStatus[] = ['draft', 'sent', 'signed', 'rejected', 'in_progress', 'completed'];
 
@@ -45,6 +51,8 @@ export default function ProjectView() {
   } = useProjectStore();
   const { company } = useSettingsStore();
   const [creatingVersion, setCreatingVersion] = useState(false);
+  const [pdfStatus, setPdfStatus] = useState<PdfStatus>('idle');
+  const docRef = useRef<HTMLDivElement>(null);
 
   const project = id ? getProject(id) : undefined;
   const version = id ? getCurrentVersion(id) : undefined;
@@ -82,6 +90,25 @@ export default function ProjectView() {
     archiveProject(id!);
     navigate('/projects');
   }
+
+  const proposalNumber = `${String(version.versionNumber).padStart(3, '0')}-${project.id.slice(0, 6).toUpperCase()}`;
+  const pdfFilename = `proposal-${project.client.name.replace(/\s+/g, '-')}-${proposalNumber}.pdf`;
+
+  async function handleDownloadPdf() {
+    if (!docRef.current) return;
+    setPdfStatus('generating');
+    try {
+      const file = await generateProposalPdf(docRef.current, pdfFilename);
+      downloadFile(file);
+      setPdfStatus('success');
+      setTimeout(() => setPdfStatus('idle'), 3000);
+    } catch {
+      setPdfStatus('error');
+      setTimeout(() => setPdfStatus('idle'), 5000);
+    }
+  }
+
+  const generating = pdfStatus === 'generating';
 
   return (
     <div className="page-container">
@@ -180,12 +207,22 @@ export default function ProjectView() {
 
         <Button
           variant="outline"
-          onClick={() => alert('יצוא PDF יהיה זמין בגרסה הבאה.')}
+          onClick={handleDownloadPdf}
+          disabled={generating}
         >
-          <FileText size={16} />
-          PDF
-          <span className="badge badge-gray text-xs">בקרוב</span>
+          {generating ? <Loader size={16} className="animate-spin" /> : <Download size={16} />}
+          {generating ? 'מייצר PDF...' : 'PDF'}
         </Button>
+        {pdfStatus === 'success' && (
+          <span className="text-green-600 text-xs flex items-center gap-1 self-center">
+            <CheckCircle size={13} /> קובץ PDF נוצר בהצלחה
+          </span>
+        )}
+        {pdfStatus === 'error' && (
+          <span className="text-red-600 text-xs flex items-center gap-1 self-center">
+            <AlertCircle size={13} /> יצירת ה-PDF נכשלה. נסה שוב.
+          </span>
+        )}
 
         {canEditDirectly && (
           <Button variant="outline" onClick={() => navigate('/project/new')}>
@@ -360,6 +397,18 @@ export default function ProjectView() {
           </div>
         </CardBody>
       </Card>
+
+      {/* Hidden off-screen proposal document used by html2canvas for PDF generation */}
+      <div style={{ position: 'absolute', left: '-9999px', top: 0, width: '800px', background: '#fff', pointerEvents: 'none' }} aria-hidden="true">
+        <div ref={docRef}>
+          <ProposalDocument
+            project={project}
+            version={version}
+            company={company}
+            proposalNumber={proposalNumber}
+          />
+        </div>
+      </div>
     </div>
   );
 }

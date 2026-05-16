@@ -1,3 +1,4 @@
+import { useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   ArrowLeft,
@@ -9,6 +10,8 @@ import {
   Clock,
   Building2,
   FileText,
+  Loader,
+  AlertCircle,
 } from 'lucide-react';
 import { useProjectStore } from '../../stores/projectStore';
 import { useSettingsStore } from '../../stores/settingsStore';
@@ -26,12 +29,18 @@ import { generateHighValueWarning, generateExpiryWarning } from '../../lib/prici
 import { openWhatsApp } from '../../lib/whatsapp';
 import { Button, Card, CardHeader, Alert, Badge } from '../../components/ui';
 import { WORK_CATEGORIES, findWorkItem } from '../../data/workCategories';
+import { ProposalDocument } from '../../components/proposal/ProposalDocument';
+import { generateProposalPdf, downloadFile } from '../../lib/proposalPdf';
+
+type PdfStatus = 'idle' | 'generating' | 'success' | 'error';
 
 export default function EstimateResult() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { getProject, getCurrentVersion } = useProjectStore();
   const { company } = useSettingsStore();
+  const docRef = useRef<HTMLDivElement>(null);
+  const [pdfStatus, setPdfStatus] = useState<PdfStatus>('idle');
 
   const project = id ? getProject(id) : undefined;
   const version = id ? getCurrentVersion(id) : undefined;
@@ -63,6 +72,25 @@ export default function EstimateResult() {
     const items = version.selectedItems.filter((s) => s.categoryId === cat.id);
     return { ...cat, selectedItems: items };
   }).filter((c) => c.selectedItems.length > 0);
+
+  const proposalNumber = `${String(version.versionNumber).padStart(3, '0')}-${project.id.slice(0, 6).toUpperCase()}`;
+  const pdfFilename = `proposal-${project.client.name.replace(/\s+/g, '-')}-${proposalNumber}.pdf`;
+
+  async function handleDownloadPdf() {
+    if (!docRef.current) return;
+    setPdfStatus('generating');
+    try {
+      const file = await generateProposalPdf(docRef.current, pdfFilename);
+      downloadFile(file);
+      setPdfStatus('success');
+      setTimeout(() => setPdfStatus('idle'), 3000);
+    } catch {
+      setPdfStatus('error');
+      setTimeout(() => setPdfStatus('idle'), 5000);
+    }
+  }
+
+  const generating = pdfStatus === 'generating';
 
   return (
     <div className="page-container">
@@ -170,12 +198,22 @@ export default function EstimateResult() {
         </Button>
         <Button
           variant="outline"
-          onClick={() => alert('יצוא PDF יהיה זמין בגרסה הבאה.')}
+          onClick={handleDownloadPdf}
+          disabled={generating}
         >
-          <Download size={16} />
-          PDF
-          <Badge variant="gray" className="text-xs">בקרוב</Badge>
+          {generating ? <Loader size={16} className="animate-spin" /> : <Download size={16} />}
+          {generating ? 'מייצר PDF...' : 'PDF'}
         </Button>
+        {pdfStatus === 'success' && (
+          <span className="text-green-600 text-xs flex items-center gap-1 self-center">
+            <CheckCircle size={13} /> קובץ PDF נוצר בהצלחה
+          </span>
+        )}
+        {pdfStatus === 'error' && (
+          <span className="text-red-600 text-xs flex items-center gap-1 self-center">
+            <AlertCircle size={13} /> יצירת ה-PDF נכשלה. נסה שוב.
+          </span>
+        )}
       </div>
 
       {/* ── d) Warnings ─────────────────────────────────────────────────── */}
@@ -427,6 +465,18 @@ export default function EstimateResult() {
             <MessageCircle size={16} />
             ואטסאפ
           </Button>
+        </div>
+      </div>
+
+      {/* Hidden off-screen proposal document used by html2canvas for PDF generation */}
+      <div style={{ position: 'absolute', left: '-9999px', top: 0, width: '800px', background: '#fff', pointerEvents: 'none' }} aria-hidden="true">
+        <div ref={docRef}>
+          <ProposalDocument
+            project={project}
+            version={version}
+            company={company}
+            proposalNumber={proposalNumber}
+          />
         </div>
       </div>
     </div>
