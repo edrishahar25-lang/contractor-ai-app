@@ -1,5 +1,6 @@
+import { useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Printer, ArrowLeft, Download, MessageCircle } from 'lucide-react';
+import { Printer, ArrowLeft, Download, MessageCircle, Share2, Loader, X, CheckCircle } from 'lucide-react';
 import { useProjectStore } from '../../stores/projectStore';
 import { useSettingsStore } from '../../stores/settingsStore';
 import {
@@ -7,14 +8,86 @@ import {
   CONDITION_LABELS, FINISH_LABELS, PROPERTY_TYPE_LABELS,
 } from '../../lib/format';
 import { WORK_CATEGORIES, findWorkItem } from '../../data/workCategories';
-import { openWhatsAppShort } from '../../lib/whatsapp';
+import { buildWhatsAppShortMessage } from '../../lib/whatsapp';
+import { generateProposalPdf, downloadFile, canShareFiles } from '../../lib/proposalPdf';
 import { Button } from '../../components/ui';
 
+function israeliPhoneToIntl(phone: string): string {
+  const cleaned = phone.replace(/\D/g, '');
+  if (cleaned.startsWith('972')) return cleaned;
+  if (cleaned.startsWith('0')) return '972' + cleaned.slice(1);
+  return '972' + cleaned;
+}
+
+function openWhatsAppUrl(phone: string, message: string): void {
+  const encoded = encodeURIComponent(message);
+  const intl = phone ? israeliPhoneToIntl(phone) : '';
+  const url = intl
+    ? `https://wa.me/${intl}?text=${encoded}`
+    : `https://wa.me/?text=${encoded}`;
+  window.open(url, '_blank', 'noopener,noreferrer');
+}
+
+// ── Desktop instructions modal ─────────────────────────────────────────────
+interface WhatsAppModalProps {
+  onClose: () => void;
+}
+function WhatsAppModal({ onClose }: WhatsAppModalProps) {
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4"
+      dir="rtl"
+      onClick={onClose}
+    >
+      <div
+        className="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between mb-4">
+          <span className="font-bold text-slate-900 text-lg">שליחה ללקוח בוואטסאפ</span>
+          <button onClick={onClose} className="p-1 rounded-lg hover:bg-gray-100 transition-colors">
+            <X size={18} className="text-gray-500" />
+          </button>
+        </div>
+
+        <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 mb-5">
+          וואטסאפ אינו מאפשר צירוף קובץ אוטומטי מהדפדפן. בצע את השלבים הבאים:
+        </p>
+
+        <ol className="space-y-4 mb-6">
+          {[
+            { n: 1, text: 'קובץ ה-PDF ירד למחשב שלך' },
+            { n: 2, text: 'וואטסאפ ייפתח עם הודעה מוכנה' },
+            { n: 3, text: 'צרף את קובץ ה-PDF לשיחה ושלח' },
+          ].map(({ n, text }) => (
+            <li key={n} className="flex items-start gap-3">
+              <div className="w-7 h-7 rounded-full bg-green-600 flex items-center justify-center text-white text-xs font-bold flex-shrink-0 mt-0.5">
+                {n}
+              </div>
+              <span className="text-sm text-slate-700">{text}</span>
+            </li>
+          ))}
+        </ol>
+
+        <Button variant="primary" className="w-full" onClick={onClose}>
+          <CheckCircle size={16} />
+          הבנתי
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+// ── Main page ──────────────────────────────────────────────────────────────
 export default function ProposalPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { getProject, getCurrentVersion } = useProjectStore();
   const { company } = useSettingsStore();
+
+  const docRef = useRef<HTMLDivElement>(null);
+  const [generating, setGenerating] = useState(false);
+  const [showModal, setShowModal] = useState(false);
 
   const project = id ? getProject(id) : undefined;
   const version = id ? getCurrentVersion(id) : undefined;
@@ -32,17 +105,77 @@ export default function ProposalPage() {
 
   const r = version.result;
 
-  // Group items by category (client-facing — all items shown)
   const categorized = WORK_CATEGORIES.map((cat) => {
     const items = version.selectedItems.filter((s) => s.categoryId === cat.id);
     return { ...cat, selectedItems: items };
   }).filter((c) => c.selectedItems.length > 0);
 
   const proposalNumber = `${String(project.versions.indexOf(version) + 1).padStart(3, '0')}-${project.id.slice(0, 6).toUpperCase()}`;
+  const pdfFilename = `הצעת-מחיר-${project.client.name.replace(/\s+/g, '-')}-${proposalNumber}.pdf`;
+
+  async function buildPdf(): Promise<File | null> {
+    if (!docRef.current) return null;
+    setGenerating(true);
+    try {
+      return await generateProposalPdf(docRef.current, pdfFilename);
+    } catch (err) {
+      console.error('PDF generation failed:', err);
+      return null;
+    } finally {
+      setGenerating(false);
+    }
+  }
+
+  async function handleDownloadPdf() {
+    const file = await buildPdf();
+    if (file) {
+      downloadFile(file);
+    } else {
+      window.print();
+    }
+  }
+
+  async function handleSharePdf() {
+    const file = await buildPdf();
+    if (!file) { window.print(); return; }
+
+    if (canShareFiles()) {
+      try {
+        await navigator.share({ files: [file], title: pdfFilename });
+        return;
+      } catch {
+        // cancelled or error — fall through to download
+      }
+    }
+    downloadFile(file);
+  }
+
+  async function handleSendClient() {
+    const file = await buildPdf();
+    // project is guaranteed non-null here (early return guard above)
+    const p = project!;
+    const message = buildWhatsAppShortMessage(p, company);
+
+    if (file && canShareFiles()) {
+      try {
+        await navigator.share({ files: [file], text: message });
+        return;
+      } catch {
+        // cancelled
+      }
+    }
+
+    // Desktop fallback: download → open WhatsApp → show instructions
+    if (file) downloadFile(file);
+    openWhatsAppUrl(p.client.phone ?? '', message);
+    setShowModal(true);
+  }
 
   return (
     <>
-      {/* ── Action bar (no-print) ──────────────────────────────────────────────── */}
+      {showModal && <WhatsAppModal onClose={() => setShowModal(false)} />}
+
+      {/* ── Action bar (no-print) ────────────────────────────────────────── */}
       <div className="no-print sticky top-0 z-30 bg-slate-900 border-b border-slate-700 px-4 py-2.5 flex items-center gap-2" dir="rtl">
         <button
           onClick={() => navigate(`/project/${id}/estimate`)}
@@ -51,33 +184,51 @@ export default function ProposalPage() {
           <ArrowLeft size={18} />
         </button>
         <span className="text-white font-bold text-sm flex-1">הצעת מחיר ללקוח</span>
+
+        {/* Send to client */}
         <Button
           variant="whatsapp" size="sm"
-          onClick={() => openWhatsAppShort(project, company)}
+          onClick={handleSendClient}
+          disabled={generating}
         >
-          <MessageCircle size={15} />
-          <span className="hidden sm:inline">שתף בוואטסאפ</span>
+          {generating ? <Loader size={15} className="animate-spin" /> : <MessageCircle size={15} />}
+          <span className="hidden sm:inline">שלח ללקוח</span>
         </Button>
+
+        {/* Share PDF (Web Share API / download) */}
         <Button
           variant="outline" size="sm"
-          onClick={() => window.print()}
+          onClick={handleSharePdf}
+          disabled={generating}
           className="text-white border-white/30 hover:bg-white/10"
         >
-          <Printer size={15} />
-          הדפס / שמור PDF
+          {generating ? <Loader size={15} className="animate-spin" /> : <Share2 size={15} />}
+          <span className="hidden sm:inline">שתף PDF</span>
         </Button>
+
+        {/* Download PDF */}
+        <Button
+          variant="outline" size="sm"
+          onClick={handleDownloadPdf}
+          disabled={generating}
+          className="text-white border-white/30 hover:bg-white/10"
+        >
+          {generating ? <Loader size={15} className="animate-spin" /> : <Download size={15} />}
+          <span className="hidden sm:inline">הורד PDF</span>
+        </Button>
+
+        {/* Print */}
         <Button
           variant="ghost" size="sm"
-          onClick={() => alert('ייצוא PDF אמיתי יתווסף בשלב הבא. כרגע ניתן להשתמש בהדפסה/שמירה כ-PDF מהדפדפן.')}
-          className="text-white/50"
+          onClick={() => window.print()}
+          className="text-white/60 hover:text-white"
         >
-          <Download size={15} />
-          PDF
+          <Printer size={15} />
         </Button>
       </div>
 
-      {/* ── Proposal document ──────────────────────────────────────────────────── */}
-      <div className="proposal-doc max-w-4xl mx-auto px-4 py-8 md:px-8" dir="rtl">
+      {/* ── Proposal document ─────────────────────────────────────────────── */}
+      <div ref={docRef} className="proposal-doc max-w-4xl mx-auto px-4 py-8 md:px-8" dir="rtl">
 
         {/* Company header */}
         <div className="flex flex-wrap items-start justify-between gap-4 mb-8 pb-6 border-b-2 border-slate-200">
@@ -185,7 +336,7 @@ export default function ProposalPage() {
           </div>
         </div>
 
-        {/* Financial summary — profit NOT shown to client */}
+        {/* Financial summary */}
         <div className="mb-8">
           <div className="text-sm font-bold text-gray-400 uppercase mb-3">סיכום כספי</div>
           <div className="border border-gray-200 rounded-xl overflow-hidden max-w-sm mr-auto">

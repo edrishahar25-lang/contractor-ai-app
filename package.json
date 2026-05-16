@@ -13,6 +13,8 @@
   },
   "dependencies": {
     "@hookform/resolvers": "^3.3.4",
+    "html2canvas": "^1.4.1",
+    "jspdf": "^4.2.1",
     "konva": "^9.3.22",
     "lucide-react": "^0.344.0",
     "react": "^18.2.0",
