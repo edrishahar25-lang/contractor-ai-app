@@ -163,6 +163,40 @@ export function mergeAssumptions(
   return { ...base, ...overrides };
 }
 
+// ─── Material/labor resolution ───────────────────────────────────────────────
+// Priority: explicit split on item → itemSplit in settings → legacy costType fallback
+
+function resolveItemCosts(
+  sel: SelectedWorkItem,
+  pricingSettings: PricingSettings,
+): { material: number; labor: number } {
+  // 1. Explicit split stored on the item itself (from BOQ review / blueprint)
+  if (sel.materialUnitCost !== undefined && sel.laborUnitCost !== undefined) {
+    return {
+      material: sel.quantity * sel.materialUnitCost,
+      labor: sel.quantity * sel.laborUnitCost,
+    };
+  }
+
+  // 2. itemSplit in pricing settings (keyed by item ID)
+  const split = pricingSettings.itemSplit?.[sel.itemId];
+  if (split) {
+    return {
+      material: sel.quantity * split.material,
+      labor: sel.quantity * split.labor,
+    };
+  }
+
+  // 3. Legacy fallback: unitPrice + costType (keeps existing tests passing)
+  const def = findWorkItem(sel.itemId);
+  const cost = sel.quantity * sel.unitPrice;
+  switch (def?.costType ?? 'mixed') {
+    case 'material': return { material: cost, labor: 0 };
+    case 'labor':    return { material: 0, labor: cost };
+    default:         return { material: cost * 0.6, labor: cost * 0.4 };
+  }
+}
+
 // ─── Estimate calculation ────────────────────────────────────────────────────
 
 export function calculateEstimate(
@@ -171,29 +205,14 @@ export function calculateEstimate(
   pricingSettings: PricingSettings,
   companySettings: CompanySettings,
 ): EstimateResult {
-  // 1. Raw costs
+  // 1. Raw costs — prefer explicit material/labor split when available
   let rawMaterialsCost = 0;
   let rawLaborCost = 0;
 
   for (const sel of selectedItems) {
-    const def = findWorkItem(sel.itemId);
-    const cost = sel.quantity * sel.unitPrice;
-    if (!def) {
-      rawLaborCost += cost;
-      continue;
-    }
-    switch (def.costType) {
-      case 'material':
-        rawMaterialsCost += cost;
-        break;
-      case 'labor':
-        rawLaborCost += cost;
-        break;
-      case 'mixed':
-        rawMaterialsCost += cost * 0.6;
-        rawLaborCost += cost * 0.4;
-        break;
-    }
+    const { material, labor } = resolveItemCosts(sel, pricingSettings);
+    rawMaterialsCost += material;
+    rawLaborCost += labor;
   }
 
   const rawSubtotal = rawMaterialsCost + rawLaborCost;
@@ -235,6 +254,7 @@ export function calculateEstimate(
     property,
     selectedItems,
     pricingSettings.contingencyPercent,
+    rawSubtotal,
   );
 
   return {
@@ -265,6 +285,7 @@ function generateWarnings(
   property: Property,
   selectedItems: SelectedWorkItem[],
   contingencyPercent: number,
+  rawSubtotal: number = 0,
 ): string[] {
   const warnings: string[] = [];
 
@@ -279,6 +300,39 @@ function generateWarnings(
   const hasPlumbing = selectedItems.some((s) => s.categoryId === 'plumbing');
   if (hasElectrical && hasPlumbing) {
     warnings.push('נדרש תיאום בעלי מקצוע ולוחות זמנים — חשמל ואינסטלציה בו-זמנית.');
+  }
+
+  // Duplicate detection: bathroom complete + individual bathroom items
+  const hasBathFull = selectedItems.some((s) => s.itemId === 'bath_full');
+  const hasBathIndividual = selectedItems.some(
+    (s) => s.categoryId === 'plumbing' && ['plumb_toilet', 'plumb_sink', 'plumb_shower'].includes(s.itemId),
+  );
+  if (hasBathFull && hasBathIndividual) {
+    warnings.push('תיתכן כפילות: שיפוץ חדר רחצה קומפלט כולל חלק מהסעיפים שסומנו בנפרד.');
+  }
+
+  // Duplicate detection: kitchen cabinets + individual kitchen items
+  const hasKitchenCabinets = selectedItems.some((s) => s.itemId === 'kitch_cabinets');
+  const hasKitchenSinkOrTap = selectedItems.some(
+    (s) => s.categoryId === 'kitchen' && ['kitch_sink', 'kitch_tap', 'kitch_marble'].includes(s.itemId),
+  );
+  if (hasKitchenCabinets && hasKitchenSinkOrTap) {
+    warnings.push('תיתכן כפילות: ארונות מטבח כוללים לעיתים שיש/כיור — בדוק כפילויות.');
+  }
+
+  // Price sanity: too high per sqm
+  if (property.totalSqm > 0 && rawSubtotal > 0) {
+    const perSqm = rawSubtotal / property.totalSqm;
+    if (perSqm > 15000) {
+      warnings.push('המחיר למ״ר נראה גבוה ביחס להיקף העבודה. בדוק כפילויות או מחירי יחידה.');
+    }
+    if (perSqm < 300 && selectedItems.length > 2) {
+      warnings.push('המחיר נראה נמוך ועלול לא לכסות חומר ועבודה.');
+    }
+  }
+
+  if (selectedItems.length === 0) {
+    warnings.push('לא נבחרו פריטי עבודה — האומדן מבוסס על הנחות אוטומטיות בלבד.');
   }
 
   return warnings;
@@ -313,7 +367,22 @@ export const DEFAULT_PRICING_SETTINGS: PricingSettings = {
   profitMarginPercent: 25,
   contingencyPercent: 7,
   itemPrices: { ...DEFAULT_ITEM_PRICES },
+  itemSplit: {},
 };
+
+// ─── Migration helper ────────────────────────────────────────────────────────
+// Infers material/labor split for legacy items that have only unitPrice.
+
+export function inferMaterialLaborSplit(
+  unitPrice: number,
+  costType: 'material' | 'labor' | 'mixed',
+): { material: number; labor: number } {
+  switch (costType) {
+    case 'material': return { material: unitPrice, labor: 0 };
+    case 'labor':    return { material: 0, labor: unitPrice };
+    default:         return { material: unitPrice * 0.4, labor: unitPrice * 0.6 };
+  }
+}
 
 export const DEFAULT_COMPANY_SETTINGS: CompanySettings = {
   companyName: '',

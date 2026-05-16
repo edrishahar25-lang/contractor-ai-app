@@ -29,6 +29,7 @@ export default function PricingSettings() {
   const [local, setLocal] = useState(() => ({
     ...pricing,
     itemPrices: { ...pricing.itemPrices },
+    itemSplit: { ...(pricing.itemSplit ?? {}) },
   }));
   const [saved, setSaved] = useState(false);
 
@@ -46,8 +47,25 @@ export default function PricingSettings() {
     }));
   }
 
+  function setItemSplit(itemId: string, field: 'material' | 'labor', val: number) {
+    setLocal((prev) => {
+      const existing = prev.itemSplit?.[itemId] ?? { material: 0, labor: 0, wasteFactor: 0 };
+      const next = { ...existing, [field]: val };
+      // Keep itemPrices in sync for backward compat
+      const priceKey = WORK_CATEGORIES.flatMap((c) => c.items).find((i) => i.id === itemId)?.defaultPriceKey;
+      const newItemPrices = priceKey
+        ? { ...prev.itemPrices, [priceKey]: next.material + next.labor }
+        : prev.itemPrices;
+      return {
+        ...prev,
+        itemSplit: { ...(prev.itemSplit ?? {}), [itemId]: next },
+        itemPrices: newItemPrices,
+      };
+    });
+  }
+
   function handleSave() {
-    setPricing(local);
+    setPricing({ ...local, itemSplit: local.itemSplit ?? {} });
     setSaved(true);
     setTimeout(() => setSaved(false), 3500);
   }
@@ -71,10 +89,15 @@ export default function PricingSettings() {
       {/* Explanation */}
       <div className="flex gap-3 p-4 bg-blue-50 border border-blue-200 rounded-2xl mb-5">
         <Info size={16} className="text-blue-500 flex-shrink-0 mt-0.5" />
-        <p className="text-sm text-blue-800 leading-relaxed">
-          המחירון הזה הוא בסיס החישוב של כל הצעת מחיר חדשה. ניתן לשנות מחיר לכל פריט
-          לפי שיטת התמחור שלו. פריטים קיימים בפרויקטים שכבר נוצרו לא ישתנו אוטומטית.
-        </p>
+        <div>
+          <p className="text-sm text-blue-800 leading-relaxed font-semibold mb-1">
+            המחירון מחולק לעלות חומר ועלות עבודה.
+          </p>
+          <p className="text-sm text-blue-700 leading-relaxed">
+            החישובים בהצעות המחיר מבוססים על שתי העלויות בנפרד כדי להציג רווחיות אמיתית.
+            עריכת עמודות חומר/עבודה תשפר את דיוק הניתוח. פריטים קיימים בפרויקטים שכבר נוצרו לא ישתנו אוטומטית.
+          </p>
+        </div>
       </div>
 
       {/* Success / unsaved alerts */}
@@ -142,16 +165,22 @@ export default function PricingSettings() {
                   <th className="px-5 py-2.5 text-right text-xs font-bold text-gray-400 uppercase tracking-wide">
                     פריט עבודה
                   </th>
-                  <th className="w-28 px-3 py-2.5 text-center text-xs font-bold text-gray-400 uppercase tracking-wide">
+                  <th className="w-20 px-3 py-2.5 text-center text-xs font-bold text-gray-400 uppercase tracking-wide">
                     יחידה
                   </th>
                   <th className="w-24 px-3 py-2.5 text-center text-xs font-bold text-gray-400 uppercase tracking-wide">
-                    סוג עלות
+                    סוג
                   </th>
-                  <th className="w-52 px-4 py-2.5 text-center text-xs font-bold text-gray-400 uppercase tracking-wide">
-                    מחיר
+                  <th className="w-32 px-3 py-2.5 text-center text-xs font-bold text-blue-400 uppercase tracking-wide">
+                    חומר ₪
                   </th>
-                  <th className="w-20 px-3 py-2.5 text-center text-xs font-bold text-gray-400 uppercase tracking-wide">
+                  <th className="w-32 px-3 py-2.5 text-center text-xs font-bold text-green-500 uppercase tracking-wide">
+                    עבודה ₪
+                  </th>
+                  <th className="w-28 px-4 py-2.5 text-center text-xs font-bold text-gray-400 uppercase tracking-wide">
+                    סה"כ
+                  </th>
+                  <th className="w-16 px-3 py-2.5 text-center text-xs font-bold text-gray-400 uppercase tracking-wide">
                     סטטוס
                   </th>
                 </tr>
@@ -159,8 +188,12 @@ export default function PricingSettings() {
               <tbody className="divide-y divide-gray-50">
                 {cat.items.map((item) => {
                   const defaultPrice = DEFAULT_ITEM_PRICES[item.defaultPriceKey] ?? 0;
-                  const currentPrice = local.itemPrices[item.defaultPriceKey] ?? defaultPrice;
-                  const changed = currentPrice !== defaultPrice;
+                  const currentTotal = local.itemPrices[item.defaultPriceKey] ?? defaultPrice;
+                  const splitEntry = local.itemSplit?.[item.id];
+                  const matVal = splitEntry?.material ?? (item.costType === 'material' ? currentTotal : item.costType === 'labor' ? 0 : Math.round(currentTotal * 0.4));
+                  const labVal = splitEntry?.labor ?? (item.costType === 'labor' ? currentTotal : item.costType === 'material' ? 0 : Math.round(currentTotal * 0.6));
+                  const computedTotal = splitEntry ? splitEntry.material + splitEntry.labor : currentTotal;
+                  const changed = currentTotal !== defaultPrice || !!splitEntry;
                   const cost = COST_META[item.costType];
                   return (
                     <tr
@@ -188,29 +221,39 @@ export default function PricingSettings() {
                         <Badge variant={cost?.variant ?? 'gray'}>{cost?.text ?? item.costType}</Badge>
                       </td>
 
-                      {/* Price input */}
-                      <td className="px-4 py-3">
-                        <div className="text-[10px] text-gray-400 font-bold text-center mb-1 uppercase tracking-wide">
-                          {PRICE_LABEL[item.defaultUnit] ?? 'מחיר'}
-                        </div>
+                      {/* Material cost */}
+                      <td className="px-3 py-3">
                         <div className="relative">
                           <input
                             type="number"
-                            value={currentPrice}
-                            onChange={(e) =>
-                              setItemPrice(item.defaultPriceKey, Number(e.target.value))
-                            }
+                            value={matVal}
+                            onChange={(e) => setItemSplit(item.id, 'material', Number(e.target.value))}
                             min={0}
-                            className={`input text-sm text-center py-2 pl-8 ${
-                              changed
-                                ? 'border-amber-400 focus:border-amber-500 focus:ring-amber-400 bg-amber-50/40'
-                                : ''
-                            }`}
+                            disabled={item.costType === 'labor'}
+                            className="input text-sm text-center py-2 pl-7 text-blue-700 border-blue-200 focus:border-blue-400 disabled:opacity-30"
                           />
-                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none">
-                            ₪
-                          </span>
+                          <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-blue-400 text-xs pointer-events-none">₪</span>
                         </div>
+                      </td>
+
+                      {/* Labor cost */}
+                      <td className="px-3 py-3">
+                        <div className="relative">
+                          <input
+                            type="number"
+                            value={labVal}
+                            onChange={(e) => setItemSplit(item.id, 'labor', Number(e.target.value))}
+                            min={0}
+                            disabled={item.costType === 'material'}
+                            className="input text-sm text-center py-2 pl-7 text-green-700 border-green-200 focus:border-green-400 disabled:opacity-30"
+                          />
+                          <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-green-400 text-xs pointer-events-none">₪</span>
+                        </div>
+                      </td>
+
+                      {/* Computed total */}
+                      <td className="px-4 py-3 text-center">
+                        <span className="font-bold text-slate-900 text-sm">₪{computedTotal}</span>
                       </td>
 
                       {/* Status */}

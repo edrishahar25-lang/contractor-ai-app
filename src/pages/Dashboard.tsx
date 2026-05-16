@@ -15,6 +15,7 @@ import {
   DollarSign,
   Percent,
   Upload,
+  Sparkles,
 } from 'lucide-react';
 import { useProjectStore } from '../stores/projectStore';
 import { useSettingsStore } from '../stores/settingsStore';
@@ -246,6 +247,14 @@ export default function Dashboard() {
           >
             <Upload size={18} />
             העלה תוכנית והפק הצעה
+          </Button>
+          <Button
+            size="lg"
+            variant="outline"
+            onClick={() => navigate('/estimate/brief')}
+          >
+            <Sparkles size={18} />
+            הפק הצעה מתיאור
           </Button>
           <Button
             variant="outline"

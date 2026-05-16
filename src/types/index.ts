@@ -59,9 +59,11 @@ export interface SelectedWorkItem {
   itemId: string;
   quantity: number;
   unit: WorkUnit;
-  unitPrice: number;
+  unitPrice: number;                // legacy total unit price — kept for display compat
+  materialUnitCost?: number;        // explicit material cost per unit (preferred by engine)
+  laborUnitCost?: number;           // explicit labor cost per unit (preferred by engine)
   notes?: string;
-  source?: 'manual' | 'blueprint' | 'merged';
+  source?: 'manual' | 'blueprint' | 'system_estimate' | 'ai_suggestion' | 'merged';
 }
 
 // ─── Auto assumptions ────────────────────────────────────────────────────────
@@ -108,6 +110,8 @@ export interface EstimateVersion {
   autoAssumptionOverrides: Partial<AutoAssumptions>;
   result: EstimateResult;
   notes?: string;
+  adjustedTotal?: number;    // contractor manual price override (shown in proposal)
+  adjustedNotes?: string;    // reason for adjustment
 }
 
 // ─── Project ─────────────────────────────────────────────────────────────────
@@ -133,7 +137,12 @@ export interface PricingSettings {
   vatPercent: number;
   profitMarginPercent: number;
   contingencyPercent: number;
-  itemPrices: Record<string, number>;
+  itemPrices: Record<string, number>;    // legacy: keyed by Hebrew priceKey
+  itemSplit?: Record<string, {           // per-item material/labor split, keyed by item ID
+    material: number;
+    labor: number;
+    wasteFactor: number;                 // % waste to add to material quantity
+  }>;
 }
 
 export interface CompanySettings {
