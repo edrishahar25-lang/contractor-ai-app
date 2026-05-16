@@ -13,20 +13,23 @@ export default function BlueprintUploadZone({ onFile }: Props) {
   function processFile(file: File) {
     if (!file.type.startsWith('image/') && file.type !== 'application/pdf') return;
 
-    if (file.type === 'application/pdf') {
-      onFile({
-        dataUrl: '',
-        fileType: 'pdf',
-        name: file.name,
-        naturalWidth: 0,
-        naturalHeight: 0,
-      });
-      return;
-    }
-
     const reader = new FileReader();
     reader.onload = (e) => {
       const dataUrl = e.target?.result as string;
+
+      if (file.type === 'application/pdf') {
+        // Store the base64 dataUrl so the backend can analyze it via Claude Vision.
+        // Canvas preview is not supported for PDFs — the backend handles the file.
+        onFile({
+          dataUrl,
+          fileType: 'pdf',
+          name: file.name,
+          naturalWidth: 0,
+          naturalHeight: 0,
+        });
+        return;
+      }
+
       const img = new window.Image();
       img.onload = () => {
         onFile({
@@ -79,7 +82,7 @@ export default function BlueprintUploadZone({ onFile }: Props) {
         </div>
         <div className="flex items-center gap-1.5">
           <FileText size={16} />
-          <span>PDF (תצוגה בלבד)</span>
+          <span>PDF</span>
         </div>
       </div>
 

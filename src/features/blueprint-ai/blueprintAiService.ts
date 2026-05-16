@@ -3,9 +3,9 @@ import type { AiBlueprintAnalysis, AiDetectedRoom, AiDetectedWorkItem } from './
 import type { EstimationBrief } from '../../types/boq';
 
 // ─── Configuration ────────────────────────────────────────────────────────────
-// Flip USE_MOCK to false and provide /api/blueprint/analyze when AI backend is ready.
+// Set USE_MOCK = true to use demo data without a running backend.
 
-const USE_MOCK = true;
+const USE_MOCK = false;
 const AI_ENDPOINT = '/api/blueprint/analyze';
 
 // ─── Mock data (5-room apartment, ~126 sqm) ───────────────────────────────────
@@ -112,16 +112,25 @@ export async function analyzeBlueprint(
     return { analysis: buildMockAnalysis(), isMock: true };
   }
 
-  // Real path: backend receives the image and calls the AI vision model.
+  // Real path: backend receives the image/PDF and calls Claude Vision.
   // API key is NEVER stored in the frontend.
-  const response = await fetch(AI_ENDPOINT, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ dataUrl, fileName }),
-  });
+  let response: Response;
+  try {
+    response = await fetch(AI_ENDPOINT, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ dataUrl, fileName }),
+    });
+  } catch {
+    throw new Error(
+      'לא ניתן להתחבר לשרת הניתוח. ודא שהשרת רץ (npm run dev:server) ושה-ANTHROPIC_API_KEY מוגדר.',
+    );
+  }
 
   if (!response.ok) {
-    throw new Error(`שגיאת שרת: ${response.status} ${response.statusText}`);
+    let detail = '';
+    try { detail = (await response.json()).error ?? ''; } catch { /* ignore */ }
+    throw new Error(detail || `שגיאת שרת: ${response.status} ${response.statusText}`);
   }
 
   const data = await response.json();

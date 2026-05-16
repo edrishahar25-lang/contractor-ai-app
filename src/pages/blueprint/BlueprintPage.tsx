@@ -110,10 +110,6 @@ export default function BlueprintPage() {
   }
 
   function handleNewFile(f: BpFile) {
-    if (f.fileType === 'pdf') {
-      alert('PDF תמיכה: אנא המר ל-PNG/JPG לעבודה עם כלי הסימון. ניתן להשתמש בכלי המרה חינמי כמו pdf2pic.');
-      return;
-    }
     setFile(f);
     clearAll();
   }
@@ -351,13 +347,33 @@ export default function BlueprintPage() {
           />
         ) : (
           <>
-            {/* Canvas */}
+            {/* PDF placeholder — canvas cannot render PDFs; AI analysis handles it */}
+            {file.fileType === 'pdf' ? (
+              <div className="flex-1 flex flex-col items-center justify-center bg-slate-100 gap-4 p-8 text-center">
+                <FileText size={64} className="text-slate-300" />
+                <div>
+                  <p className="font-bold text-slate-700 text-lg">{file.name}</p>
+                  <p className="text-sm text-slate-500 mt-1">קובץ PDF הועלה בהצלחה</p>
+                  <p className="text-xs text-slate-400 mt-2">
+                    לחץ <strong>"נתח תוכנית אוטומטית"</strong> בסרגל הכלים לניתוח AI
+                  </p>
+                </div>
+                {analysisState.status === 'analyzing' && (
+                  <div className="flex items-center gap-2 text-purple-600">
+                    <Loader size={18} className="animate-spin" />
+                    <span className="text-sm font-medium">מנתח תוכנית PDF עם AI...</span>
+                  </div>
+                )}
+              </div>
+            ) : (
+            /* Canvas */
             <BlueprintCanvas
               ref={canvasRef}
               file={file}
               onSelectChange={(id, type) => { setSelectedId(id); setSelectedType(type); }}
               onScaleChange={setDisplayScale}
             />
+            )}
 
             {/* BOQ Panel */}
             {showBOQ && (

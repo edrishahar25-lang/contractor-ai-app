@@ -12,8 +12,8 @@ import CalibrationDialog from './CalibrationDialog';
 import RoomNameDialog from './RoomNameDialog';
 import type { BpAnnotationType, BpFile, BpPoint } from '../../types/blueprint';
 
-// ─── Debug: set to true to show the measurement debug panel ──────────────────
-const DEBUG_MEASUREMENTS = true;
+// ─── Debug: set to false to hide the measurement debug panel ─────────────────
+const DEBUG_MEASUREMENTS = false;
 
 // ─── Annotation visual config ─────────────────────────────────────────────────
 
@@ -500,18 +500,48 @@ const BlueprintCanvas = forwardRef<BlueprintCanvasHandle, Props>(
 
       // Wall lines
       if (['demolition_wall', 'new_wall'].includes(ann.type) && ann.x1 != null) {
+        const ppm = calibration.pixelsPerMeter;
+        const lenM = ppm ? Math.hypot(ann.x2! - ann.x1!, ann.y2! - ann.y1!) / ppm : null;
+        const mx = (ann.x1! + ann.x2!) / 2;
+        const my = (ann.y1! + ann.y2!) / 2;
+        const dx = ann.x2! - ann.x1!;
+        const dy = ann.y2! - ann.y1!;
+        const segLen = Math.hypot(dx, dy) || 1;
+        const perpX = (-dy / segLen) * 14;
+        const perpY = (dx / segLen) * 14;
         return (
-          <Line
-            key={ann.id}
-            points={[ann.x1!, ann.y1!, ann.x2!, ann.y2!]}
-            stroke={isSel ? '#1d4ed8' : cfg.stroke}
-            strokeWidth={isSel ? 5 : 3}
-            dash={ann.type === 'demolition_wall' ? [8, 4] : []}
-            strokeScaleEnabled={false}
-            listening={activeTool === 'select'}
-            onClick={onAnnClick}
-            hitStrokeWidth={20}
-          />
+          <Group key={ann.id} listening={activeTool === 'select'} onClick={onAnnClick}>
+            <Line
+              points={[ann.x1!, ann.y1!, ann.x2!, ann.y2!]}
+              stroke={isSel ? '#1d4ed8' : cfg.stroke}
+              strokeWidth={isSel ? 5 : 3}
+              dash={ann.type === 'demolition_wall' ? [8, 4] : []}
+              strokeScaleEnabled={false}
+              hitStrokeWidth={20}
+            />
+            {lenM !== null && (
+              <>
+                <Rect
+                  x={mx + perpX - 22} y={my + perpY - 9}
+                  width={44} height={16}
+                  fill="rgba(255,255,255,0.88)"
+                  cornerRadius={3}
+                  listening={false}
+                />
+                <Text
+                  x={mx + perpX - 22} y={my + perpY - 7}
+                  width={44}
+                  text={`${lenM.toFixed(2)}מ׳`}
+                  fontSize={10}
+                  fill={cfg.stroke}
+                  align="center"
+                  fontFamily="Arial"
+                  fontStyle="bold"
+                  listening={false}
+                />
+              </>
+            )}
+          </Group>
         );
       }
 
@@ -674,6 +704,30 @@ const BlueprintCanvas = forwardRef<BlueprintCanvasHandle, Props>(
                   strokeScaleEnabled={false}
                 />
                 <Circle x={lineStart.x} y={lineStart.y} radius={5} fill={previewColor} />
+                {calibration.pixelsPerMeter != null && (
+                  <>
+                    <Rect
+                      x={(lineStart.x + cursorPos.x) / 2 - 27}
+                      y={(lineStart.y + cursorPos.y) / 2 - 12}
+                      width={54} height={18}
+                      fill="rgba(255,255,255,0.92)"
+                      cornerRadius={4}
+                      listening={false}
+                    />
+                    <Text
+                      x={(lineStart.x + cursorPos.x) / 2 - 27}
+                      y={(lineStart.y + cursorPos.y) / 2 - 9}
+                      width={54}
+                      text={`${(Math.hypot(cursorPos.x - lineStart.x, cursorPos.y - lineStart.y) / calibration.pixelsPerMeter!).toFixed(2)}מ׳`}
+                      fontSize={12}
+                      fill={previewColor}
+                      align="center"
+                      fontFamily="Arial"
+                      fontStyle="bold"
+                      listening={false}
+                    />
+                  </>
+                )}
               </>
             )}
 

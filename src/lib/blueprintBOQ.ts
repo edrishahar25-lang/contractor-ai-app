@@ -12,7 +12,7 @@ const CONFIGS = [
   { key: 'ac_point',         label: 'מזגנים',               unit: 'unit', priceKey: 'מזגן עילי' },
   { key: 'door',             label: 'דלתות פנים',            unit: 'unit', priceKey: 'דלת פנים' },
   { key: 'window',           label: 'חלונות',               unit: 'unit', priceKey: 'חלון אלומיניום' },
-  { key: 'demolition_wall',  label: 'קירות הריסה',           unit: 'unit', priceKey: 'שבירת קירות' },
+  { key: 'demolition_wall',  label: 'קירות הריסה',           unit: 'sqm',  priceKey: 'שבירת קירות' },
   { key: 'new_wall',         label: 'קירות גבס חדשים',       unit: 'sqm',  priceKey: 'קיר גבס' },
 ] as const;
 
@@ -35,7 +35,7 @@ const BOQ_TO_ITEM: Record<string, { itemId: string; categoryId: string }> = {
 // Unit expected per BOQ key — used for consistency validation
 const EXPECTED_UNIT: Record<string, 'unit' | 'sqm' | 'meter'> = {
   electrical_point: 'unit', lighting_point: 'unit', water_point: 'unit',
-  ac_point: 'unit', door: 'unit', window: 'unit', demolition_wall: 'unit',
+  ac_point: 'unit', door: 'unit', window: 'unit', demolition_wall: 'sqm',
   room_flooring: 'sqm', room_painting: 'sqm', flooring_area: 'sqm',
   painting_area: 'sqm', new_wall: 'sqm',
 };
@@ -80,7 +80,12 @@ export function deriveBOQ(
         addSource(ann.type, ann.id);
         break;
       case 'demolition_wall':
-        totals['demolition_wall'] = (totals['demolition_wall'] ?? 0) + 1;
+        if (hasScale && ann.x1 != null && ann.y1 != null && ann.x2 != null && ann.y2 != null) {
+          const lenM = Math.hypot(ann.x2 - ann.x1, ann.y2 - ann.y1) / ppm;
+          totals['demolition_wall'] = (totals['demolition_wall'] ?? 0) + lenM * 2.7;
+        } else if (ann.x1 != null) {
+          totals['demolition_wall'] = (totals['demolition_wall'] ?? 0) + 1;
+        }
         addSource('demolition_wall', ann.id);
         break;
       case 'new_wall':
