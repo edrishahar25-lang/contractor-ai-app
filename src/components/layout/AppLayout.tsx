@@ -35,7 +35,7 @@ export default function AppLayout() {
     end ? location.pathname === to : location.pathname.startsWith(to);
 
   return (
-    <div className="flex min-h-screen bg-gray-50">
+    <div className="flex h-screen overflow-hidden bg-gray-50">
       {/* ── Desktop Sidebar ─────────────────── */}
       <aside className="no-print hidden lg:flex flex-col fixed right-0 top-0 bottom-0 w-60 bg-slate-900 z-40">
         {/* Logo */}
@@ -180,7 +180,7 @@ export default function AppLayout() {
       </aside>
 
       {/* ── Main content ─────────────────────── */}
-      <div className="flex-1 flex flex-col lg:mr-60">
+      <div className="flex-1 flex flex-col lg:mr-60 min-h-0">
         {/* Mobile top bar */}
         <header className="no-print lg:hidden sticky top-0 z-30 flex items-center justify-between px-4 h-14 bg-slate-900 shadow-md">
           <button
@@ -197,7 +197,7 @@ export default function AppLayout() {
         </header>
 
         {/* Page */}
-        <main className="flex-1 pb-20 lg:pb-6">
+        <main className="flex-1 overflow-y-auto pb-20 lg:pb-6 min-h-0">
           <Outlet />
         </main>
 

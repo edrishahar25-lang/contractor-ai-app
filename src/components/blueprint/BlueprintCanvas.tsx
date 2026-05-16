@@ -166,7 +166,9 @@ const BlueprintCanvas = forwardRef<BlueprintCanvasHandle, Props>(
 
     function getCanvasPos(_e: KonvaEventObject<MouseEvent>): BpPoint {
       const stage = stageRef.current;
-      const ptr = stage.getPointerPosition()!;
+      if (!stage) return { x: 0, y: 0 };
+      const ptr = stage.getPointerPosition();
+      if (!ptr) return { x: 0, y: 0 };
       return { x: (ptr.x - pos.x) / scale, y: (ptr.y - pos.y) / scale };
     }
 
@@ -281,7 +283,7 @@ const BlueprintCanvas = forwardRef<BlueprintCanvasHandle, Props>(
     // Expose delete to parent via window event (simple approach for MVP)
     useEffect(() => {
       const handleKey = (e: KeyboardEvent) => {
-        if ((e.key === 'Delete' || e.key === 'Backspace') && selectedId) {
+        if (e.key === 'Delete' && selectedId) {
           handleDeleteSelected();
         }
       };
@@ -294,7 +296,9 @@ const BlueprintCanvas = forwardRef<BlueprintCanvasHandle, Props>(
     function handleWheel(e: KonvaEventObject<WheelEvent>) {
       e.evt.preventDefault();
       const stage = stageRef.current;
-      const ptr = stage.getPointerPosition()!;
+      if (!stage) return;
+      const ptr = stage.getPointerPosition();
+      if (!ptr) return;
       const oldScale = scale;
       const dir = e.evt.deltaY > 0 ? -1 : 1;
       const newScale = Math.min(Math.max(dir > 0 ? oldScale * 1.15 : oldScale / 1.15, 0.05), 20);
@@ -322,7 +326,9 @@ const BlueprintCanvas = forwardRef<BlueprintCanvasHandle, Props>(
 
     function handleMouseMove(e: KonvaEventObject<MouseEvent>) {
       const stage = stageRef.current;
-      const ptr = stage.getPointerPosition()!;
+      if (!stage) return;
+      const ptr = stage.getPointerPosition();
+      if (!ptr) return;
       const cp = { x: (ptr.x - pos.x) / scale, y: (ptr.y - pos.y) / scale };
       setCursorPos(cp);
 
@@ -558,7 +564,7 @@ const BlueprintCanvas = forwardRef<BlueprintCanvasHandle, Props>(
           {/* Layer 2: Saved rooms and annotations */}
           <Layer>
             {/* Calibration reference markers */}
-            {calRef1 && calRef2 && (
+            {calRef1 && calRef2 && calibration.pixelsPerMeter != null && (
               <>
                 <Line
                   points={[calRef1.x, calRef1.y, calRef2.x, calRef2.y]}
