@@ -37,27 +37,42 @@ export default function Step2Property() {
   const hasElevator = watch('property.hasElevator');
   const hasParking = watch('property.hasParking');
 
-  const numInput = (name: string, label: string, unit?: string) => (
-    <div className="form-group">
-      <label className="label">{label}</label>
-      <div className="relative">
-        <input
-          {...register(name as never, { valueAsNumber: true })}
-          type="number"
-          inputMode="numeric"
-          min={0}
-          step={name.includes('ceilingHeight') ? 0.1 : 1}
-          className={`input ${unit ? 'pl-12' : ''}`}
-          placeholder="0"
-        />
-        {unit && (
-          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-gray-400 pointer-events-none">
-            {unit}
-          </span>
-        )}
+  function getFieldError(name: string): string | undefined {
+    const parts = name.split('.');
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let obj: any = errors;
+    for (const part of parts) {
+      if (!obj) return undefined;
+      obj = obj[part];
+    }
+    return obj?.message;
+  }
+
+  const numInput = (name: string, label: string, unit?: string) => {
+    const errMsg = getFieldError(name);
+    return (
+      <div className="form-group">
+        <label className="label">{label}</label>
+        <div className="relative">
+          <input
+            {...register(name as never, { valueAsNumber: true })}
+            type="number"
+            inputMode="numeric"
+            min={0}
+            step={name.includes('ceilingHeight') ? 0.1 : 1}
+            className={`input ${unit ? 'pl-12' : ''} ${errMsg ? 'border-red-400 focus:border-red-500' : ''}`}
+            placeholder="0"
+          />
+          {unit && (
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-gray-400 pointer-events-none">
+              {unit}
+            </span>
+          )}
+        </div>
+        {errMsg && <p className="error-msg mt-1">{errMsg}</p>}
       </div>
-    </div>
-  );
+    );
+  };
 
   return (
     <div>
@@ -171,12 +186,6 @@ export default function Step2Property() {
         </div>
       )}
 
-      {errors.property?.totalSqm && (
-        <p className="error-msg mt-2">{errors.property.totalSqm.message}</p>
-      )}
-      {errors.property?.rooms && (
-        <p className="error-msg mt-1">{errors.property.rooms.message}</p>
-      )}
     </div>
   );
 }
