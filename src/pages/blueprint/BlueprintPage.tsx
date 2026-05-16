@@ -246,7 +246,14 @@ export default function BlueprintPage() {
         {/* BOQ Panel */}
         {showBOQ && (
           <div className="w-72 flex-shrink-0 border-l border-gray-200 overflow-hidden hidden md:flex flex-col">
-            <BlueprintBOQPanel file={file} onClose={toggleBOQ} />
+            <BlueprintBOQPanel
+              file={file}
+              onClose={toggleBOQ}
+              onPushToEstimate={() => {
+                if (!hasLinkedProject) setShowCreateModal(true);
+                else setShowPushModal(true);
+              }}
+            />
           </div>
         )}
       </div>
