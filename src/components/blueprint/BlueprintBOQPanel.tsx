@@ -1,8 +1,9 @@
+import { useMemo } from 'react';
 import { ListChecks, AlertTriangle, ChevronLeft, RefreshCw, Trash2, ArrowUpRight, Sparkles, Lock } from 'lucide-react';
 import { useBlueprintStore } from '../../stores/blueprintStore';
 import { useSettingsStore } from '../../stores/settingsStore';
 import { useProjectStore } from '../../stores/projectStore';
-import { deriveBOQ, boqToSelectedItems } from '../../lib/blueprintBOQ';
+import { deriveBOQ, boqToSelectedItems, validateScaleWarnings } from '../../lib/blueprintBOQ';
 import type { BpFile } from '../../types/blueprint';
 
 const UNIT_LABELS: Record<string, string> = {
@@ -22,8 +23,18 @@ export default function BlueprintBOQPanel({ file, onClose, onPushToEstimate }: P
   const { pricing } = useSettingsStore();
   const { getProject } = useProjectStore();
 
-  const boq = deriveBOQ(rooms, annotations, calibration, pricing.itemPrices);
-  const { warnings: conversionWarnings } = boqToSelectedItems(boq, pricing.itemPrices);
+  const boq = useMemo(
+    () => deriveBOQ(rooms, annotations, calibration, pricing.itemPrices),
+    [rooms, annotations, calibration, pricing.itemPrices],
+  );
+  const { warnings: conversionWarnings } = useMemo(
+    () => boqToSelectedItems(boq, pricing.itemPrices),
+    [boq, pricing.itemPrices],
+  );
+  const scaleWarnings = useMemo(
+    () => validateScaleWarnings(rooms, annotations, calibration),
+    [rooms, annotations, calibration],
+  );
   const grandTotal = boq.reduce((s, l) => s + l.total, 0);
   const hasScale = !!calibration.pixelsPerMeter;
   const linkedProject = linkedProjectId ? getProject(linkedProjectId) : undefined;
@@ -71,6 +82,14 @@ export default function BlueprintBOQPanel({ file, onClose, onPushToEstimate }: P
           <span>{missingPriceLines.length} פריטים ללא מחיר במחירון: {missingPriceLines.map(l => l.label).join(' | ')}</span>
         </div>
       )}
+
+      {/* Scale warnings */}
+      {scaleWarnings.map((w, i) => (
+        <div key={i} className="mx-3 mt-2 flex gap-2 p-3 bg-red-50 border border-red-200 rounded-xl text-xs text-red-800">
+          <AlertTriangle size={14} className="text-red-500 flex-shrink-0 mt-0.5" />
+          <span>{w}</span>
+        </div>
+      ))}
 
       {/* Conversion warnings */}
       {conversionWarnings.length > 0 && (

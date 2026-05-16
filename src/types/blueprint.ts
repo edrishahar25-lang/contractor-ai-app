@@ -9,6 +9,9 @@ export type BlueprintToolType =
   | 'point_electrical'
   | 'point_water'
   | 'point_ac'
+  | 'point_lighting'
+  | 'point_door'
+  | 'point_window'
   | 'area_flooring'
   | 'area_painting';
 
@@ -18,6 +21,9 @@ export type BpAnnotationType =
   | 'electrical_point'
   | 'water_point'
   | 'ac_point'
+  | 'lighting_point'
+  | 'door'
+  | 'window'
   | 'flooring_area'
   | 'painting_area';
 
@@ -73,4 +79,5 @@ export interface BOQLine {
   priceKey: string;
   unitPrice: number;
   total: number;
+  sourceIds: string[];
 }

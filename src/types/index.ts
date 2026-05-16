@@ -63,7 +63,8 @@ export interface SelectedWorkItem {
   materialUnitCost?: number;        // explicit material cost per unit (preferred by engine)
   laborUnitCost?: number;           // explicit labor cost per unit (preferred by engine)
   notes?: string;
-  source?: 'manual' | 'blueprint' | 'system_estimate' | 'ai_suggestion' | 'merged';
+  source?: 'manual' | 'blueprint' | 'system_estimate' | 'ai_suggestion' | 'merged' | 'manual_override';
+  sourceIds?: string[];
 }
 
 // ─── Auto assumptions ────────────────────────────────────────────────────────

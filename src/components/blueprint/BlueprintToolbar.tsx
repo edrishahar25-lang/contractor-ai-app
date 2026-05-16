@@ -3,6 +3,7 @@ import {
   Hammer, Minus, Zap, Droplets, Wind,
   Grid3x3, Paintbrush, ZoomIn, ZoomOut, Maximize2,
   ListChecks, Trash2, RotateCcw, Maximize,
+  Lightbulb, DoorOpen, AppWindow,
 } from 'lucide-react';
 import type { BlueprintToolType } from '../../types/blueprint';
 import type { BpCalibration } from '../../types/blueprint';
@@ -25,6 +26,9 @@ const TOOLS: ToolDef[] = [
   { id: 'point_electrical', label: 'נקודת חשמל',      icon: <Zap size={16} />,           group: 'points' },
   { id: 'point_water',      label: 'נקודת מים',       icon: <Droplets size={16} />,      group: 'points' },
   { id: 'point_ac',         label: 'מזגן',            icon: <Wind size={16} />,          group: 'points' },
+  { id: 'point_lighting', label: 'נקודת תאורה', icon: <Lightbulb size={16} />, group: 'points' },
+  { id: 'point_door',     label: 'דלת',          icon: <DoorOpen  size={16} />, group: 'points' },
+  { id: 'point_window',   label: 'חלון',         icon: <AppWindow size={16} />, group: 'points' },
   { id: 'area_flooring',    label: 'אזור ריצוף',      icon: <Grid3x3 size={16} />,       group: 'areas' },
   { id: 'area_painting',    label: 'אזור צבע',        icon: <Paintbrush size={16} />,    group: 'areas' },
 ];
@@ -47,6 +51,9 @@ const TOOL_COLORS: Partial<Record<BlueprintToolType, string>> = {
   area_flooring: 'text-green-600',
   area_painting: 'text-orange-500',
   scale_calibrate: 'text-amber-600',
+  point_lighting: 'text-yellow-400',
+  point_door:     'text-amber-600',
+  point_window:   'text-sky-400',
 };
 
 interface Props {

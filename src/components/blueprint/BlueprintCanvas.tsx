@@ -25,6 +25,9 @@ const ANN_CFG: Record<BpAnnotationType, { fill: string; stroke: string; label: s
   new_wall:         { fill: '#bfdbfe', stroke: '#2563eb', label: '' },
   flooring_area:    { fill: 'rgba(16,185,129,0.15)', stroke: '#059669', label: 'ריצוף' },
   painting_area:    { fill: 'rgba(249,115,22,0.15)', stroke: '#ea580c', label: 'צבע' },
+  lighting_point: { fill: '#fef9c3', stroke: '#a16207', label: 'ת' },
+  door:           { fill: '#fde68a', stroke: '#b45309', label: 'ד' },
+  window:         { fill: '#e0f2fe', stroke: '#0284c7', label: 'ח' },
 };
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -238,8 +241,11 @@ const BlueprintCanvas = forwardRef<BlueprintCanvasHandle, Props>(
     function placePoint(cp: BpPoint) {
       const typeMap: Record<string, BpAnnotationType> = {
         point_electrical: 'electrical_point',
-        point_water: 'water_point',
-        point_ac: 'ac_point',
+        point_water:      'water_point',
+        point_ac:         'ac_point',
+        point_lighting:   'lighting_point',
+        point_door:       'door',
+        point_window:     'window',
       };
       const type = typeMap[activeTool];
       if (type) addAnnotation({ id: uuidv4(), type, x: cp.x, y: cp.y });
@@ -413,7 +419,10 @@ const BlueprintCanvas = forwardRef<BlueprintCanvasHandle, Props>(
         case 'wall_new':        handleLineClick(cp); break;
         case 'point_electrical':
         case 'point_water':
-        case 'point_ac':        placePoint(cp); break;
+        case 'point_ac':
+        case 'point_lighting':
+        case 'point_door':
+        case 'point_window':    placePoint(cp); break;
       }
     }
 
@@ -470,7 +479,7 @@ const BlueprintCanvas = forwardRef<BlueprintCanvasHandle, Props>(
       };
 
       // Point markers
-      if (['electrical_point', 'water_point', 'ac_point'].includes(ann.type) && ann.x != null) {
+      if (['electrical_point', 'water_point', 'ac_point', 'lighting_point', 'door', 'window'].includes(ann.type) && ann.x != null) {
         return (
           <Group key={ann.id} listening={activeTool === 'select'} onClick={onAnnClick}>
             <Circle

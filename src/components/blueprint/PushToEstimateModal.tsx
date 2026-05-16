@@ -28,6 +28,7 @@ export default function PushToEstimateModal({ onClose }: Props) {
   const project = linkedProjectId ? getProject(linkedProjectId) : undefined;
   const currentVersion = project?.versions.find((v) => v.id === project.currentVersionId);
   const hasManualItems = (currentVersion?.selectedItems.length ?? 0) > 0;
+  const isLockedStatus = project?.status === 'sent' || project?.status === 'signed';
 
   const boqLines = deriveBOQ(rooms, annotations, calibration, pricing.itemPrices);
   const { items: blueprintItems, warnings } = boqToSelectedItems(boqLines, pricing.itemPrices);
@@ -90,6 +91,12 @@ export default function PushToEstimateModal({ onClose }: Props) {
         </div>
 
         <div className="p-5 space-y-4">
+          {isLockedStatus && (
+            <Alert variant="warning" icon={<AlertTriangle size={14} />}>
+              פרויקט זה כבר {project.status === 'signed' ? 'נחתם' : 'נשלח'}. דחיפת כמויות תיצור גרסת טיוטה חדשה ותאפס את הסטטוס.
+            </Alert>
+          )}
+
           {warnings.length > 0 && (
             <Alert variant="warning" icon={<AlertTriangle size={14} />}>
               {warnings.length} סימונים לא תורגמו למחירון: {warnings.join(' | ')}

@@ -13,6 +13,7 @@ const SOURCE_LABELS: Record<string, { text: string; variant: 'blue' | 'green' | 
   system_estimate: { text: 'הערכה',      variant: 'yellow' },
   ai_suggestion:   { text: 'AI',         variant: 'blue' },
   merged:          { text: 'ממוזג',      variant: 'green' },
+  manual_override: { text: 'נערך ידנית', variant: 'yellow' },
 };
 
 export default function BOQReviewPage() {
@@ -59,7 +60,7 @@ export default function BOQReviewPage() {
       const unitPrice = matVal !== undefined && labVal !== undefined
         ? matVal + labVal
         : it.unitPrice;
-      return { ...it, quantity: qty, materialUnitCost: matVal, laborUnitCost: labVal, unitPrice };
+      return { ...it, quantity: qty, materialUnitCost: matVal, laborUnitCost: labVal, unitPrice, source: 'manual_override' as const };
     }));
     setEditingId(null);
   }
