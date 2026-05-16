@@ -193,6 +193,13 @@
     @apply h-px bg-gray-100 my-4;
   }
 
+  /* ── Blueprint toolbar button ───────*/
+  .btn-toolbar {
+    @apply flex items-center justify-center p-1.5 rounded-lg text-slate-300
+           hover:bg-slate-700 hover:text-white transition-colors cursor-pointer
+           disabled:opacity-40 disabled:cursor-not-allowed;
+  }
+
   /* ── Empty state ─────────────────── */
   .empty-state {
     @apply flex flex-col items-center justify-center py-16 text-center gap-4 px-4;
@@ -255,5 +262,11 @@ input[type='number'] {
 /* ── Print ───────────────────────── */
 @media print {
   .no-print { display: none !important; }
-  .card { box-shadow: none; border: 1px solid #e5e7eb; }
+  body { background: white !important; font-size: 12px; }
+  .card { box-shadow: none !important; border: 1px solid #e5e7eb !important; break-inside: avoid; }
+  .page-container { max-width: 100% !important; padding: 16px !important; }
+  .lg\:mr-60 { margin-right: 0 !important; }
+  .pb-20, .pb-6 { padding-bottom: 8px !important; }
+  .rounded-2xl { border-radius: 8px !important; }
+  h1.page-title { font-size: 18px; }
 }

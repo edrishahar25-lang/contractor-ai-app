@@ -9,7 +9,7 @@ import EstimateResult from './pages/project/EstimateResult';
 import CompanySettings from './pages/settings/CompanySettings';
 import PricingSettings from './pages/settings/PricingSettings';
 import PhotosPage from './pages/placeholders/PhotosPage';
-import BlueprintPage from './pages/placeholders/BlueprintPage';
+import BlueprintPage from './pages/blueprint/BlueprintPage';
 
 export default function App() {
   return (
