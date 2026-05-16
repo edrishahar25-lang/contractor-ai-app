@@ -55,7 +55,7 @@ export default function Step2Property() {
         <label className="label">{label}</label>
         <div className="relative">
           <input
-            {...register(name as never, { valueAsNumber: true })}
+            {...register(name as never, { setValueAs: (v: string) => v === '' ? undefined : parseFloat(v) })}
             type="number"
             inputMode="numeric"
             min={0}
