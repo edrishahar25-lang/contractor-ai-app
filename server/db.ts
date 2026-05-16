@@ -2,7 +2,7 @@ import Database from 'better-sqlite3';
 import path from 'path';
 import fs from 'fs';
 
-const DB_PATH = process.env.DB_PATH || path.join(__dirname, '../../data/contractor.db');
+const DB_PATH = process.env.DB_PATH || path.join(process.cwd(), 'data/contractor.db');
 
 let db: Database.Database | null = null;
 

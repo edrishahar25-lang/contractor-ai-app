@@ -37,7 +37,7 @@ app.use('/api/projects', projectsRouter);
 // ── Static frontend (production only) ──────────────────────────────────────
 
 if (IS_PROD) {
-  const distPath = path.join(__dirname, '../dist');
+  const distPath = path.join(process.cwd(), 'dist');
   app.use(express.static(distPath));
   // SPA fallback — send index.html for all non-API routes
   app.get('*', (req, res) => {
