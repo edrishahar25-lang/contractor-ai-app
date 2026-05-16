@@ -10,6 +10,8 @@ interface BlueprintState {
   annotations: BpAnnotation[];
   activeTool: BlueprintToolType;
   showBOQ: boolean;
+  linkedProjectId: string | null;
+  blueprintName: string;
 
   setCalibration: (c: BpCalibration) => void;
   addRoom: (r: BpRoom) => void;
@@ -19,6 +21,8 @@ interface BlueprintState {
   setActiveTool: (t: BlueprintToolType) => void;
   toggleBOQ: () => void;
   clearAll: () => void;
+  setLinkedProject: (id: string | null) => void;
+  setBlueprintName: (name: string) => void;
 }
 
 export const useBlueprintStore = create<BlueprintState>()(
@@ -29,6 +33,8 @@ export const useBlueprintStore = create<BlueprintState>()(
       annotations: [],
       activeTool: 'select',
       showBOQ: true,
+      linkedProjectId: null,
+      blueprintName: '',
 
       setCalibration: (c) => set({ calibration: c }),
       addRoom: (r) => set((s) => ({ rooms: [...s.rooms, r] })),
@@ -38,14 +44,17 @@ export const useBlueprintStore = create<BlueprintState>()(
       setActiveTool: (t) => set({ activeTool: t }),
       toggleBOQ: () => set((s) => ({ showBOQ: !s.showBOQ })),
       clearAll: () => set({ rooms: [], annotations: [], calibration: INIT_CAL }),
+      setLinkedProject: (id) => set({ linkedProjectId: id }),
+      setBlueprintName: (name) => set({ blueprintName: name }),
     }),
     {
       name: 'blueprint-v1',
-      // file (image dataUrl) is not persisted — too large for localStorage
       partialize: (s) => ({
         calibration: s.calibration,
         rooms: s.rooms,
         annotations: s.annotations,
+        linkedProjectId: s.linkedProjectId,
+        blueprintName: s.blueprintName,
       }),
     }
   )

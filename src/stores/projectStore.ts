@@ -29,6 +29,7 @@ interface ProjectStore {
   setStatus: (id: string, status: ProjectStatus) => void;
   // Version management
   createNewVersion: (projectId: string, notes?: string) => EstimateVersion;
+  createVersionWithItems: (projectId: string, selectedItems: SelectedWorkItem[], notes?: string) => EstimateVersion;
   // Duplicate / archive
   duplicateProject: (id: string) => Project;
   archiveProject: (id: string) => void;
@@ -149,6 +150,39 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
     persistProjects(next);
     set({ projects: next });
 
+    return newVersion;
+  },
+
+  createVersionWithItems: (projectId, selectedItems, notes = 'נוצר מתוך תוכנית בנייה') => {
+    const { pricing, company } = useSettingsStore.getState();
+    const project = get().projects.find((p) => p.id === projectId);
+    if (!project) throw new Error(`Project ${projectId} not found`);
+
+    const result = calculateEstimate(selectedItems, project.property, pricing, company);
+
+    const newVersion: EstimateVersion = {
+      id: uuid(),
+      versionNumber: project.versions.length + 1,
+      createdAt: new Date().toISOString(),
+      selectedItems,
+      autoAssumptionOverrides: {},
+      result,
+      notes,
+    };
+
+    const expiresAt = addDays(new Date(), 30).toISOString();
+    const updatedProject: Project = {
+      ...project,
+      versions: [...project.versions, newVersion],
+      currentVersionId: newVersion.id,
+      status: 'draft',
+      expiresAt,
+      updatedAt: new Date().toISOString(),
+    };
+
+    const next = get().projects.map((p) => p.id === projectId ? updatedProject : p);
+    persistProjects(next);
+    set({ projects: next });
     return newVersion;
   },
 

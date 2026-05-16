@@ -61,6 +61,7 @@ export interface SelectedWorkItem {
   unit: WorkUnit;
   unitPrice: number;
   notes?: string;
+  source?: 'manual' | 'blueprint' | 'merged';
 }
 
 // ─── Auto assumptions ────────────────────────────────────────────────────────

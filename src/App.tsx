@@ -6,6 +6,7 @@ import ProjectList from './pages/ProjectList';
 import NewProject from './pages/project/NewProject';
 import ProjectView from './pages/project/ProjectView';
 import EstimateResult from './pages/project/EstimateResult';
+import ProposalPage from './pages/project/ProposalPage';
 import CompanySettings from './pages/settings/CompanySettings';
 import PricingSettings from './pages/settings/PricingSettings';
 import PhotosPage from './pages/placeholders/PhotosPage';
@@ -21,6 +22,7 @@ export default function App() {
         <Route path="/project/new" element={<NewProject />} />
         <Route path="/project/:id" element={<ProjectView />} />
         <Route path="/project/:id/estimate" element={<EstimateResult />} />
+        <Route path="/project/:id/proposal" element={<ProposalPage />} />
         <Route path="/pricing" element={<PricingSettings />} />
         <Route path="/settings" element={<CompanySettings />} />
         <Route path="/photos" element={<PhotosPage />} />

@@ -8,6 +8,7 @@ import {
   CheckCircle,
   Clock,
   Building2,
+  FileText,
 } from 'lucide-react';
 import { useProjectStore } from '../../stores/projectStore';
 import { useSettingsStore } from '../../stores/settingsStore';
@@ -153,6 +154,12 @@ export default function EstimateResult() {
         >
           <MessageCircle size={18} />
           שלח בוואטסאפ
+        </Button>
+        <Button
+          onClick={() => navigate(`/project/${id}/proposal`)}
+        >
+          <FileText size={16} />
+          הצעה ללקוח
         </Button>
         <Button
           variant="outline"

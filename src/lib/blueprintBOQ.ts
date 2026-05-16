@@ -1,4 +1,5 @@
 import type { BpRoom, BpAnnotation, BpCalibration, BOQLine } from '../types/blueprint';
+import type { SelectedWorkItem } from '../types';
 
 const CONFIGS = [
   { key: 'room_flooring',    label: 'ריצוף חדרים',          unit: 'sqm',  priceKey: 'ריצוף עבודה' },
@@ -11,6 +12,19 @@ const CONFIGS = [
   { key: 'demolition_wall',  label: 'קירות הריסה',           unit: 'unit', priceKey: 'שבירת קירות' },
   { key: 'new_wall',         label: 'קירות גבס חדשים',       unit: 'sqm',  priceKey: 'קיר גבס' },
 ] as const;
+
+// Maps BOQ keys → workCategories item IDs
+const BOQ_TO_ITEM: Record<string, { itemId: string; categoryId: string }> = {
+  room_flooring:    { itemId: 'floor_work',    categoryId: 'flooring' },
+  room_painting:    { itemId: 'paint_general', categoryId: 'painting' },
+  flooring_area:    { itemId: 'floor_work',    categoryId: 'flooring' },
+  painting_area:    { itemId: 'paint_general', categoryId: 'painting' },
+  electrical_point: { itemId: 'elec_point',    categoryId: 'electrical' },
+  water_point:      { itemId: 'plumb_water',   categoryId: 'plumbing' },
+  ac_point:         { itemId: 'ac_split',      categoryId: 'ac' },
+  demolition_wall:  { itemId: 'demo_walls',    categoryId: 'demolition' },
+  new_wall:         { itemId: 'dry_walls',     categoryId: 'drywall' },
+};
 
 export function deriveBOQ(
   rooms: BpRoom[],
@@ -43,7 +57,7 @@ export function deriveBOQ(
       case 'new_wall':
         if (hasScale && ann.x1 != null && ann.y1 != null && ann.x2 != null && ann.y2 != null) {
           const lenM = Math.hypot(ann.x2 - ann.x1, ann.y2 - ann.y1) / ppm;
-          totals['new_wall'] = (totals['new_wall'] ?? 0) + lenM * 2.7; // height 2.7m
+          totals['new_wall'] = (totals['new_wall'] ?? 0) + lenM * 2.7;
         } else if (ann.x1 != null) {
           totals['new_wall'] = (totals['new_wall'] ?? 0) + 1;
         }
@@ -72,6 +86,88 @@ export function deriveBOQ(
         total: Math.round(qty * unitPrice),
       };
     });
+}
+
+/**
+ * Converts BOQ lines into SelectedWorkItem[] ready for the pricing engine.
+ * Lines that map to the same itemId are aggregated (summed).
+ * Returns items and any warnings for unmapped entries.
+ */
+export function boqToSelectedItems(
+  boqLines: BOQLine[],
+  itemPrices: Record<string, number>,
+): { items: SelectedWorkItem[]; warnings: string[] } {
+  const aggregated = new Map<string, SelectedWorkItem>();
+  const warnings: string[] = [];
+
+  for (const line of boqLines) {
+    const mapping = BOQ_TO_ITEM[line.key];
+    if (!mapping) {
+      warnings.push(`לא נמצא פריט מחירון מתאים עבור "${line.label}"`);
+      continue;
+    }
+
+    const { itemId, categoryId } = mapping;
+    const unitPrice = itemPrices[line.priceKey] ?? 0;
+
+    if (aggregated.has(itemId)) {
+      const existing = aggregated.get(itemId)!;
+      aggregated.set(itemId, {
+        ...existing,
+        quantity: parseFloat((existing.quantity + line.quantity).toFixed(2)),
+      });
+    } else {
+      aggregated.set(itemId, {
+        categoryId,
+        itemId,
+        quantity: line.quantity,
+        unit: line.unit as SelectedWorkItem['unit'],
+        unitPrice,
+        source: 'blueprint',
+      });
+    }
+  }
+
+  return { items: Array.from(aggregated.values()), warnings };
+}
+
+/**
+ * Merges blueprint items into existing manual items.
+ * Same itemId → quantities are summed; source becomes 'merged'.
+ * Items only in manual keep source 'manual'.
+ * Items only in blueprint keep source 'blueprint'.
+ */
+export function mergeSelectedItems(
+  manual: SelectedWorkItem[],
+  blueprint: SelectedWorkItem[],
+  updatePrices: boolean,
+  itemPrices: Record<string, number>,
+): SelectedWorkItem[] {
+  const result = new Map<string, SelectedWorkItem>();
+
+  for (const item of manual) {
+    result.set(item.itemId, { ...item, source: 'manual' });
+  }
+
+  for (const item of blueprint) {
+    if (result.has(item.itemId)) {
+      const existing = result.get(item.itemId)!;
+      result.set(item.itemId, {
+        ...existing,
+        quantity: parseFloat((existing.quantity + item.quantity).toFixed(2)),
+        unitPrice: updatePrices ? (itemPrices[item.itemId] ?? existing.unitPrice) : existing.unitPrice,
+        source: 'merged',
+      });
+    } else {
+      result.set(item.itemId, {
+        ...item,
+        unitPrice: updatePrices ? (itemPrices[item.itemId] ?? item.unitPrice) : item.unitPrice,
+        source: 'blueprint',
+      });
+    }
+  }
+
+  return Array.from(result.values());
 }
 
 export function polygonAreaPixels(pts: { x: number; y: number }[]): number {

@@ -14,6 +14,7 @@ import {
   Settings,
   DollarSign,
   Percent,
+  Upload,
 } from 'lucide-react';
 import { useProjectStore } from '../stores/projectStore';
 import { useSettingsStore } from '../stores/settingsStore';
@@ -237,6 +238,14 @@ export default function Dashboard() {
           >
             <PlusCircle size={18} />
             פרויקט חדש
+          </Button>
+          <Button
+            size="lg"
+            variant="outline"
+            onClick={() => navigate('/blueprint')}
+          >
+            <Upload size={18} />
+            העלה תוכנית והפק הצעה
           </Button>
           <Button
             variant="outline"
