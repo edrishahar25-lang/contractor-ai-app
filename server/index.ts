@@ -14,7 +14,6 @@ const app = express();
 
 // ── Health routes — registered first, no middleware needed ──────────────────
 
-app.get('/', (_req, res) => { res.status(200).send('OK'); });
 app.get('/health', (_req, res) => { res.status(200).send('OK'); });
 app.get('/api/health', (_req, res) => {
   res.status(200).json({ ok: true, timestamp: new Date().toISOString(), aiReady: !!process.env.ANTHROPIC_API_KEY });
