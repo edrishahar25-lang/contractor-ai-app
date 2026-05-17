@@ -1,8 +1,0 @@
-[phases.install]
-cmds = ["NODE_ENV=development npm ci --no-audit"]
-
-[phases.build]
-cmds = ["npm run build:all"]
-
-[start]
-cmd = "npm start"
