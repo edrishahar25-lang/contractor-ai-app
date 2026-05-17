@@ -134,6 +134,12 @@ export interface Project {
 
 // ─── Settings ────────────────────────────────────────────────────────────────
 
+export interface CalibrationDeal {
+  label: string;   // optional description
+  sqm: number;
+  totalPrice: number;
+}
+
 export interface PricingSettings {
   vatPercent: number;
   profitMarginPercent: number;
@@ -144,6 +150,8 @@ export interface PricingSettings {
     labor: number;
     wasteFactor: number;                 // % waste to add to material quantity
   }>;
+  priceMultiplier?: number;              // 1.0 = baseline; applied to all generated prices
+  calibrationDeals?: CalibrationDeal[];  // past projects used to calibrate multiplier
 }
 
 export interface CompanySettings {

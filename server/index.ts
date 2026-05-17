@@ -5,6 +5,7 @@ import path from 'path';
 import { initDb } from './db';
 import { router as blueprintRouter } from './routes/blueprint';
 import { router as projectsRouter } from './routes/projects';
+import { router as estimateRouter } from './routes/estimate';
 
 const PORT = parseInt(process.env.PORT ?? '3001', 10);
 const IS_PROD = process.env.NODE_ENV === 'production';
@@ -34,6 +35,7 @@ app.get('/api/health', (_req, res) => {
 
 app.use('/api/blueprint', blueprintRouter);
 app.use('/api/projects', projectsRouter);
+app.use('/api/estimate', estimateRouter);
 
 // ── Static frontend (production only) ──────────────────────────────────────
 

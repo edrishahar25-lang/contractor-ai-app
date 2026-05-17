@@ -1,10 +1,11 @@
 import { useState } from 'react';
-import { Save, CheckCircle, RefreshCw, Info } from 'lucide-react';
+import { Save, CheckCircle, RefreshCw, Info, TrendingUp, Plus, Trash2 } from 'lucide-react';
 import { useSettingsStore } from '../../stores/settingsStore';
-import { DEFAULT_ITEM_PRICES } from '../../lib/pricingEngine';
+import { DEFAULT_ITEM_PRICES, BASELINE_PRICE_PER_SQM } from '../../lib/pricingEngine';
 import { Button, Card, CardHeader, Alert, Badge } from '../../components/ui';
 import { WORK_CATEGORIES } from '../../data/workCategories';
 import { UNIT_LABELS } from '../../lib/format';
+import type { CalibrationDeal } from '../../types';
 
 // ─── Label maps ───────────────────────────────────────────────────────────────
 
@@ -30,8 +31,52 @@ export default function PricingSettings() {
     ...pricing,
     itemPrices: { ...pricing.itemPrices },
     itemSplit: { ...(pricing.itemSplit ?? {}) },
+    priceMultiplier: pricing.priceMultiplier ?? 1.0,
+    calibrationDeals: pricing.calibrationDeals ?? [],
   }));
   const [saved, setSaved] = useState(false);
+
+  // ── Calibration helpers ───────────────────────────────────────────────────
+
+  const deals = local.calibrationDeals ?? [];
+
+  function addDeal() {
+    setLocal((p) => ({
+      ...p,
+      calibrationDeals: [...(p.calibrationDeals ?? []), { label: '', sqm: 100, totalPrice: 0 }],
+    }));
+  }
+
+  function updateDeal(i: number, patch: Partial<CalibrationDeal>) {
+    setLocal((p) => {
+      const next = [...(p.calibrationDeals ?? [])];
+      next[i] = { ...next[i], ...patch };
+      return { ...p, calibrationDeals: next };
+    });
+  }
+
+  function removeDeal(i: number) {
+    setLocal((p) => ({
+      ...p,
+      calibrationDeals: (p.calibrationDeals ?? []).filter((_, idx) => idx !== i),
+    }));
+  }
+
+  function applyCalibration() {
+    const validDeals = deals.filter((d) => d.sqm > 0 && d.totalPrice > 0);
+    if (validDeals.length === 0) return;
+    const totalSqm = validDeals.reduce((s, d) => s + d.sqm, 0);
+    const totalPrice = validDeals.reduce((s, d) => s + d.totalPrice, 0);
+    const avgPerSqm = totalPrice / totalSqm;
+    const multiplier = parseFloat((avgPerSqm / BASELINE_PRICE_PER_SQM).toFixed(3));
+    setLocal((p) => ({ ...p, priceMultiplier: Math.max(0.3, Math.min(5, multiplier)) }));
+  }
+
+  const validDeals = deals.filter((d) => d.sqm > 0 && d.totalPrice > 0);
+  const calibAvgPerSqm = validDeals.length > 0
+    ? Math.round(validDeals.reduce((s, d) => s + d.totalPrice, 0) / validDeals.reduce((s, d) => s + d.sqm, 0))
+    : null;
+  const currentMultiplier = local.priceMultiplier ?? 1.0;
 
   function setPercentage(
     field: 'vatPercent' | 'profitMarginPercent' | 'contingencyPercent',
@@ -65,7 +110,12 @@ export default function PricingSettings() {
   }
 
   function handleSave() {
-    setPricing({ ...local, itemSplit: local.itemSplit ?? {} });
+    setPricing({
+      ...local,
+      itemSplit: local.itemSplit ?? {},
+      priceMultiplier: local.priceMultiplier ?? 1.0,
+      calibrationDeals: local.calibrationDeals ?? [],
+    });
     setSaved(true);
     setTimeout(() => setSaved(false), 3500);
   }
@@ -111,6 +161,104 @@ export default function PricingSettings() {
           {changedCount} מחירים שונו ועדיין לא נשמרו — לחץ ״שמור מחירון״ כדי שהשינויים ייכנסו לתוקף.
         </Alert>
       )}
+
+      {/* ── Calibration card ──────────────────────────────────── */}
+      <Card className="mb-5">
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <TrendingUp size={16} className="text-amber-500" />
+            <span className="font-bold text-slate-800">כיול מחירים לפי עסקאות שלך</span>
+          </div>
+          <span className="text-xs text-gray-400">
+            המחירים יוכפלו בגורם כיול כך שיתאימו לרמת התמחור שלך
+          </span>
+        </CardHeader>
+        <div className="p-5">
+          {/* Current multiplier banner */}
+          {currentMultiplier !== 1.0 && (
+            <div className={`flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-semibold mb-4 ${
+              currentMultiplier > 1 ? 'bg-green-50 text-green-800 border border-green-200' : 'bg-blue-50 text-blue-800 border border-blue-200'
+            }`}>
+              <TrendingUp size={14} />
+              מחירון מכוייל: כל המחירים × {currentMultiplier.toFixed(2)}
+              ({currentMultiplier > 1 ? '+' : ''}{Math.round((currentMultiplier - 1) * 100)}% מהבסיס)
+              <button
+                className="mr-auto text-xs underline opacity-60 hover:opacity-100"
+                onClick={() => setLocal((p) => ({ ...p, priceMultiplier: 1.0 }))}
+              >
+                אפס
+              </button>
+            </div>
+          )}
+
+          <p className="text-sm text-gray-600 mb-3">
+            הזן 1-3 פרויקטים שסיימת (ללא מע"מ) כדי לחשב את הגורם שמתאים לרמת המחירים שלך:
+          </p>
+
+          {/* Deals table */}
+          <div className="space-y-2 mb-3">
+            {deals.map((deal, i) => (
+              <div key={i} className="flex gap-2 items-center">
+                <input
+                  className="input flex-1 text-sm"
+                  placeholder="תיאור (אופציונלי)"
+                  value={deal.label}
+                  onChange={(e) => updateDeal(i, { label: e.target.value })}
+                />
+                <div className="relative w-24 flex-shrink-0">
+                  <input
+                    type="number" min={1} className="input text-sm text-center pl-8"
+                    placeholder="מ״ר"
+                    value={deal.sqm || ''}
+                    onChange={(e) => updateDeal(i, { sqm: Number(e.target.value) })}
+                  />
+                  <span className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400 text-xs">מ״ר</span>
+                </div>
+                <div className="relative w-32 flex-shrink-0">
+                  <input
+                    type="number" min={0} className="input text-sm text-center pl-7"
+                    placeholder="עלות ₪"
+                    value={deal.totalPrice || ''}
+                    onChange={(e) => updateDeal(i, { totalPrice: Number(e.target.value) })}
+                  />
+                  <span className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400 text-xs">₪</span>
+                </div>
+                <button onClick={() => removeDeal(i)} className="p-1.5 text-red-400 hover:text-red-600">
+                  <Trash2 size={14} />
+                </button>
+              </div>
+            ))}
+          </div>
+
+          <div className="flex items-center gap-3 flex-wrap">
+            {deals.length < 5 && (
+              <button onClick={addDeal} className="flex items-center gap-1.5 text-sm text-blue-600 hover:text-blue-700">
+                <Plus size={14} />
+                הוסף פרויקט
+              </button>
+            )}
+
+            {calibAvgPerSqm !== null && (
+              <div className="flex items-center gap-3 mr-auto flex-wrap">
+                <span className="text-sm text-gray-500">
+                  הממוצע שלך: <strong className="text-slate-800">₪{calibAvgPerSqm}/מ״ר</strong>
+                  {' '}vs בסיס מערכת: <strong>₪{BASELINE_PRICE_PER_SQM}/מ״ר</strong>
+                </span>
+                <button
+                  onClick={applyCalibration}
+                  className="px-3 py-1.5 rounded-lg bg-amber-500 text-white text-sm font-semibold hover:bg-amber-600 transition-colors"
+                >
+                  החל כיול → ×{(calibAvgPerSqm / BASELINE_PRICE_PER_SQM).toFixed(2)}
+                </button>
+              </div>
+            )}
+          </div>
+
+          <p className="text-xs text-gray-400 mt-3">
+            גורם הכיול חל על כל הצעות המחיר החדשות. פרויקטים קיימים לא מושפעים.
+          </p>
+        </div>
+      </Card>
 
       {/* ── Percentages card ──────────────────────────────────── */}
       <Card className="mb-5">

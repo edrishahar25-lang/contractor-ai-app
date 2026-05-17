@@ -1,13 +1,16 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Sparkles, ArrowLeft, AlertTriangle, Info } from 'lucide-react';
+import { Sparkles, ArrowLeft, AlertTriangle, Info, Zap, Cpu } from 'lucide-react';
 import { useProjectStore } from '../../stores/projectStore';
 import { useSettingsStore } from '../../stores/settingsStore';
 import { generateBOQFromBrief, boqItemsToSelectedItems } from '../../lib/boqGenerator';
 import { calculateAutoAssumptions } from '../../lib/pricingEngine';
+import { estimateFromBriefAi } from '../../features/estimation-ai/estimationAiService';
 import type { EstimationBrief, RenovationType } from '../../types/boq';
-import type { Client, Property } from '../../types';
+import type { Client, Property, SelectedWorkItem } from '../../types';
 import { Button, Alert } from '../../components/ui';
+import { findWorkItem } from '../../data/workCategories';
+import { inferMaterialLaborSplit } from '../../lib/pricingEngine';
 
 const RENOVATION_TYPES: { value: RenovationType; label: string; desc: string }[] = [
   { value: 'general',    label: 'שיפוץ כללי',        desc: 'ריצוף, צבע, חשמל, אינסטלציה' },
@@ -42,9 +45,11 @@ export default function EstimationBriefPage() {
   const [finishLevel, setFinishLevel] = useState<Property['finishLevel']>('standard');
   const [description, setDescription] = useState('');
 
+  const [useAi, setUseAi] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [generating, setGenerating] = useState(false);
   const [boqWarnings, setBoqWarnings] = useState<string[]>([]);
+  const [aiError, setAiError] = useState('');
 
   function validate() {
     const errs: Record<string, string> = {};
@@ -61,6 +66,7 @@ export default function EstimationBriefPage() {
     const errs = validate();
     if (Object.keys(errs).length > 0) { setErrors(errs); return; }
     setGenerating(true);
+    setAiError('');
 
     const brief: EstimationBrief = {
       propertyType,
@@ -76,10 +82,42 @@ export default function EstimationBriefPage() {
       description,
     };
 
-    const { items: boqItems, warnings } = generateBOQFromBrief(brief, pricing);
-    setBoqWarnings(warnings);
+    let selectedItems: SelectedWorkItem[];
+    let warnings: string[] = [];
 
-    const selectedItems = boqItemsToSelectedItems(boqItems);
+    if (useAi) {
+      try {
+        const aiResult = await estimateFromBriefAi({ ...brief, description: brief.description ?? '' });
+        warnings = [...aiResult.warnings, ...aiResult.missingInfo];
+        const m = pricing.priceMultiplier ?? 1.0;
+        selectedItems = aiResult.items.map((item) => {
+          const totalPrice = (pricing.itemPrices[item.name] ?? pricing.itemPrices[item.itemId] ?? 0) * m;
+          const def = findWorkItem(item.itemId);
+          const { material, labor } = inferMaterialLaborSplit(totalPrice || 0, def?.costType ?? 'mixed');
+          return {
+            categoryId: item.categoryId,
+            itemId: item.itemId,
+            quantity: item.quantity,
+            unit: item.unit,
+            unitPrice: material + labor,
+            materialUnitCost: material,
+            laborUnitCost: labor,
+            notes: item.reasoning,
+            source: 'ai_suggestion' as const,
+          };
+        });
+      } catch (err: any) {
+        setAiError(err.message ?? 'שגיאת AI — נסה שוב');
+        setGenerating(false);
+        return;
+      }
+    } else {
+      const result = generateBOQFromBrief(brief, pricing);
+      warnings = result.warnings;
+      selectedItems = boqItemsToSelectedItems(result.items);
+    }
+
+    setBoqWarnings(warnings);
 
     const client: Client = {
       name: clientName.trim(),
@@ -104,7 +142,8 @@ export default function EstimationBriefPage() {
     };
 
     const autoOverrides = calculateAutoAssumptions(property);
-    const project = createProject(client, property, selectedItems, autoOverrides, 'נוצר מתיאור פרויקט');
+    const project = createProject(client, property, selectedItems, autoOverrides,
+      useAi ? 'נוצר בעזרת AI מתיאור פרויקט' : 'נוצר מתיאור פרויקט');
     navigate(`/project/${project.id}/boq`);
   }
 
@@ -120,17 +159,58 @@ export default function EstimationBriefPage() {
         </div>
       </div>
 
-      {/* AI placeholder notice */}
-      <div className="flex gap-3 p-4 bg-purple-50 border border-purple-200 rounded-2xl mb-5">
-        <Sparkles size={16} className="text-purple-500 flex-shrink-0 mt-0.5" />
-        <div>
-          <p className="text-sm text-purple-800 font-semibold">מנוע חישוב מבוסס כללים</p>
-          <p className="text-xs text-purple-600 mt-0.5">
-            בעתיד AI ינתח את התיאור, התוכנית והתמונות ויציע כתב כמויות. כרגע המערכת משתמשת בנוסחאות אוטומטיות
-            שניתן לערוך לפני יצירת ההצעה.
-          </p>
-        </div>
+      {/* Mode toggle */}
+      <div className="flex gap-2 mb-5">
+        <button
+          type="button"
+          onClick={() => setUseAi(false)}
+          className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl border-2 font-semibold text-sm transition-all ${
+            !useAi ? 'border-amber-500 bg-amber-50 text-amber-800' : 'border-gray-200 text-gray-500 hover:border-gray-300'
+          }`}
+        >
+          <Zap size={15} />
+          נוסחאות אוטומטיות
+        </button>
+        <button
+          type="button"
+          onClick={() => setUseAi(true)}
+          className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl border-2 font-semibold text-sm transition-all ${
+            useAi ? 'border-purple-500 bg-purple-50 text-purple-800' : 'border-gray-200 text-gray-500 hover:border-gray-300'
+          }`}
+        >
+          <Cpu size={15} />
+          ניתוח AI
+        </button>
       </div>
+
+      {/* Mode description */}
+      {useAi ? (
+        <div className="flex gap-3 p-4 bg-purple-50 border border-purple-200 rounded-2xl mb-5">
+          <Sparkles size={16} className="text-purple-500 flex-shrink-0 mt-0.5" />
+          <div>
+            <p className="text-sm text-purple-800 font-semibold">מצב AI — ניתוח חכם של הפרויקט</p>
+            <p className="text-xs text-purple-600 mt-0.5">
+              Claude יקרא את פרטי הנכס והתיאור החופשי ויבנה כתב כמויות מותאם. ניתן לערוך את כל הפריטים לאחר הפקה.
+            </p>
+          </div>
+        </div>
+      ) : (
+        <div className="flex gap-3 p-4 bg-amber-50 border border-amber-200 rounded-2xl mb-5">
+          <Zap size={16} className="text-amber-500 flex-shrink-0 mt-0.5" />
+          <div>
+            <p className="text-sm text-amber-800 font-semibold">מצב נוסחאות — חישוב מהיר ומדויק</p>
+            <p className="text-xs text-amber-600 mt-0.5">
+              כמויות מחושבות לפי נוסחאות ישראליות סטנדרטיות. מהיר ואמין לפרויקטים טיפוסיים.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {aiError && (
+        <Alert variant="error" icon={<AlertTriangle size={14} />} className="mb-4">
+          {aiError}
+        </Alert>
+      )}
 
       {boqWarnings.length > 0 && (
         <Alert variant="warning" icon={<AlertTriangle size={14} />} className="mb-4">
@@ -248,26 +328,38 @@ export default function EstimationBriefPage() {
 
         {/* Free-text description */}
         <div className="card p-5">
-          <label className="label">תיאור חופשי (אופציונלי)</label>
+          <label className="label">
+            תיאור חופשי
+            {useAi && <span className="mr-1 text-purple-600 text-xs">(ממליץ — AI ינתח את התיאור)</span>}
+          </label>
           <textarea
             className="input resize-none"
-            rows={3}
+            rows={4}
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            placeholder="דירת 5 חדרים, 180 מטר, שני שירותים, מרפסת אחת, שיפוץ כללי ברמת גמר פרימיום..."
+            placeholder={useAi
+              ? 'דירת 5 חדרים, 180 מטר, שני שירותים, מרפסת אחת. שיפוץ כללי ברמת גמר פרימיום. מרצפות פורצלן, ארון מטבח חדש, 2 מזגנים...'
+              : 'תיאור אופציונלי — ניתן לערוך את הכמויות בשלב הבא.'}
           />
-          <div className="flex items-start gap-2 mt-2">
-            <Info size={13} className="text-blue-400 flex-shrink-0 mt-0.5" />
-            <p className="text-xs text-gray-400">בעתיד, AI ינתח את התיאור ויתאים את הכמויות. כרגע ניתן לערוך את הכמויות בשלב הבא.</p>
-          </div>
+          {useAi && (
+            <div className="flex items-start gap-2 mt-2">
+              <Info size={13} className="text-purple-400 flex-shrink-0 mt-0.5" />
+              <p className="text-xs text-gray-400">ככל שהתיאור מפורט יותר, AI יוכל להתאים את הכמויות טוב יותר.</p>
+            </div>
+          )}
         </div>
       </div>
 
       <div className="flex items-center justify-between mt-6">
         <Button variant="outline" onClick={() => navigate(-1)}>ביטול</Button>
-        <Button size="lg" onClick={handleGenerate} loading={generating}>
-          <Sparkles size={18} />
-          הפק כתב כמויות לבדיקה
+        <Button
+          size="lg"
+          onClick={handleGenerate}
+          loading={generating}
+          className={useAi ? 'bg-purple-600 hover:bg-purple-700' : ''}
+        >
+          {useAi ? <Cpu size={18} /> : <Sparkles size={18} />}
+          {useAi ? 'הפק כתב כמויות עם AI' : 'הפק כתב כמויות לבדיקה'}
         </Button>
       </div>
     </div>

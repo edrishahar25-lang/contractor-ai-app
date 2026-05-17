@@ -362,12 +362,18 @@ export function generatePhotoWarning(photoRefs: string[]): string | null {
 
 // ─── Default settings ────────────────────────────────────────────────────────
 
+// Baseline: 100sqm general renovation cost at default prices (no VAT, no margin)
+// Paint 300m²×45 + Floor 100×180 + Mat 100×120 + Skirting 120×45 + Elec 28×350 + Plumb 9×600 + AC 3×450 + Waste
+export const BASELINE_PRICE_PER_SQM = 690; // ₪ per sqm at default prices
+
 export const DEFAULT_PRICING_SETTINGS: PricingSettings = {
   vatPercent: 18,
   profitMarginPercent: 25,
   contingencyPercent: 7,
   itemPrices: { ...DEFAULT_ITEM_PRICES },
   itemSplit: {},
+  priceMultiplier: 1.0,
+  calibrationDeals: [],
 };
 
 // ─── Migration helper ────────────────────────────────────────────────────────

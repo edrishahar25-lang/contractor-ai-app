@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: contractor-ai-pro
+    runtime: node
+    buildCommand: npm run build:all
+    startCommand: npm run start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: FRONTEND_URL
+        sync: false
+    healthCheckPath: /api/health
+    plan: starter

@@ -1,6 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { randomUUID } from 'crypto';
 import type { AiBlueprintAnalysis, AiDetectedRoom, AiDetectedMeasurement, AiDetectedWorkItem } from '../types';
+import { getClient } from './clientFactory';
 
 const SYSTEM_PROMPT = `
 You are an expert in Israeli construction plans and contractor cost estimation.
@@ -59,15 +60,6 @@ Rules:
 const MAX_IMAGE_BYTES_DECODED = 5 * 1024 * 1024; // 5 MB
 const SUPPORTED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'] as const;
 type SupportedImageType = typeof SUPPORTED_IMAGE_TYPES[number];
-
-let _client: Anthropic | null = null;
-function getClient(): Anthropic {
-  if (!_client) {
-    if (!process.env.ANTHROPIC_API_KEY) throw new Error('ANTHROPIC_API_KEY is not set');
-    _client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-  }
-  return _client;
-}
 
 function cleanBase64(raw: string): string {
   // Strip all whitespace (newlines, spaces, tabs) that can cause 400 errors

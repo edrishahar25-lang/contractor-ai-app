@@ -17,10 +17,14 @@ function resolveUnitCosts(
   priceKey: string,
   pricing: PricingSettings,
 ): { material: number; labor: number } {
+  const m = pricing.priceMultiplier ?? 1.0;
   const split = pricing.itemSplit?.[itemId];
-  if (split) return { material: split.material, labor: split.labor };
+  if (split) return {
+    material: Math.round(split.material * m),
+    labor: Math.round(split.labor * m),
+  };
 
-  const totalPrice = pricing.itemPrices[priceKey] ?? 0;
+  const totalPrice = (pricing.itemPrices[priceKey] ?? 0) * m;
   const def = findWorkItem(itemId);
   return inferMaterialLaborSplit(totalPrice, def?.costType ?? 'mixed');
 }
