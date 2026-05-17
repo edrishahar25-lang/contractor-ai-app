@@ -53,17 +53,33 @@ if (IS_PROD) {
 // ── Start ────────────────────────────────────────────────────────────────────
 
 async function start() {
-  // Listen immediately so Railway healthcheck passes before DB init
-  app.listen(PORT, '0.0.0.0', () => {
-    console.log(`[server] running on port ${PORT} (${IS_PROD ? 'production' : 'development'})`);
+  console.log(`[server] PORT=${PORT} NODE_ENV=${process.env.NODE_ENV ?? 'development'}`);
+
+  const server = app.listen(PORT, '0.0.0.0');
+
+  server.on('listening', () => {
+    console.log('SERVER STARTED');
+    console.log('HEALTHCHECK READY');
+    console.log(`[server] listening on 0.0.0.0:${PORT}`);
     console.log(`[server] AI ready: ${!!process.env.ANTHROPIC_API_KEY}`);
   });
 
+  server.on('error', (err: NodeJS.ErrnoException) => {
+    console.error(`[server] FATAL listen error: ${err.code} — ${err.message}`);
+    process.exit(1);
+  });
+
+  // DB init happens AFTER server is up — never blocks healthcheck
   try {
     await initDb();
   } catch (err) {
     console.warn('[db] Could not initialize DB:', (err as Error).message);
   }
 }
+
+process.on('uncaughtException', (err) => {
+  console.error('[server] uncaughtException:', err.message);
+  process.exit(1);
+});
 
 start();
