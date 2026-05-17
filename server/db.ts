@@ -1,25 +1,24 @@
-import Database from 'better-sqlite3';
-import path from 'path';
-import fs from 'fs';
+import { Pool } from 'pg';
 
-const DB_PATH = process.env.DB_PATH || path.join(process.cwd(), 'data/contractor.db');
+let pool: Pool | null = null;
 
-let db: Database.Database | null = null;
-
-export function getDb(): Database.Database {
-  if (!db) throw new Error('Database not initialized — call initDb() first');
-  return db;
+export function getPool(): Pool | null {
+  return pool;
 }
 
-export function initDb(): void {
-  const dir = path.dirname(DB_PATH);
-  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+export async function initDb(): Promise<void> {
+  const connStr = process.env.DATABASE_URL;
+  if (!connStr) {
+    console.warn('[db] DATABASE_URL not set — persistence disabled');
+    return;
+  }
 
-  db = new Database(DB_PATH);
-  db.pragma('journal_mode = WAL');
-  db.pragma('foreign_keys = ON');
+  pool = new Pool({
+    connectionString: connStr,
+    ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
+  });
 
-  db.exec(`
+  await pool.query(`
     CREATE TABLE IF NOT EXISTS blueprints (
       id          TEXT PRIMARY KEY,
       filename    TEXT NOT NULL,
@@ -30,13 +29,13 @@ export function initDb(): void {
     );
 
     CREATE TABLE IF NOT EXISTS projects (
-      id          TEXT PRIMARY KEY,
-      blueprint_id TEXT REFERENCES blueprints(id),
-      data        TEXT NOT NULL,
-      created_at  TEXT NOT NULL,
-      updated_at  TEXT NOT NULL
+      id           TEXT PRIMARY KEY,
+      blueprint_id TEXT,
+      data         TEXT NOT NULL,
+      created_at   TEXT NOT NULL,
+      updated_at   TEXT NOT NULL
     );
   `);
 
-  console.log('[db] initialized:', DB_PATH);
+  console.log('[db] PostgreSQL connected');
 }

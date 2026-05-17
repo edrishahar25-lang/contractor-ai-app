@@ -52,11 +52,11 @@ if (IS_PROD) {
 
 // ── Start ────────────────────────────────────────────────────────────────────
 
-function start() {
+async function start() {
   try {
-    initDb();
+    await initDb();
   } catch (err) {
-    console.warn('[db] Could not initialize SQLite:', (err as Error).message);
+    console.warn('[db] Could not initialize DB:', (err as Error).message);
   }
 
   app.listen(PORT, () => {
