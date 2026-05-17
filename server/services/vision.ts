@@ -55,7 +55,35 @@ Rules:
 - globalWarnings: always include a disclaimer that AI analysis requires contractor review.
 `.trim();
 
-const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+// Anthropic Claude Vision limits
+const MAX_IMAGE_BYTES_DECODED = 5 * 1024 * 1024; // 5 MB
+const SUPPORTED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'] as const;
+type SupportedImageType = typeof SUPPORTED_IMAGE_TYPES[number];
+
+let _client: Anthropic | null = null;
+function getClient(): Anthropic {
+  if (!_client) {
+    if (!process.env.ANTHROPIC_API_KEY) throw new Error('ANTHROPIC_API_KEY is not set');
+    _client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+  }
+  return _client;
+}
+
+function cleanBase64(raw: string): string {
+  // Strip all whitespace (newlines, spaces, tabs) that can cause 400 errors
+  return raw.replace(/\s+/g, '');
+}
+
+function validateImageSize(base64: string): void {
+  // base64 string length → decoded bytes: len * 0.75 (minus padding)
+  const decodedBytes = Math.floor(base64.length * 0.75);
+  if (decodedBytes > MAX_IMAGE_BYTES_DECODED) {
+    throw new Error(
+      `התמונה גדולה מדי לניתוח AI (${(decodedBytes / 1024 / 1024).toFixed(1)} MB — מקסימום 5 MB). ` +
+      'הקטן את התמונה לפני העלאה, או השתמש בפורמט JPEG באיכות נמוכה יותר.',
+    );
+  }
+}
 
 function addIds<T extends object>(items: T[]): (T & { id: string; status: 'pending' })[] {
   return items.map((item) => ({
@@ -66,7 +94,6 @@ function addIds<T extends object>(items: T[]): (T & { id: string; status: 'pendi
 }
 
 function parseAnalysisJson(text: string): AiBlueprintAnalysis {
-  // Strip markdown code fences if Claude included them
   const cleaned = text
     .replace(/^```(?:json)?\s*/m, '')
     .replace(/\s*```\s*$/m, '')
@@ -76,9 +103,8 @@ function parseAnalysisJson(text: string): AiBlueprintAnalysis {
   try {
     parsed = JSON.parse(cleaned);
   } catch {
-    // Try to extract JSON object from surrounding text
     const match = cleaned.match(/\{[\s\S]*\}/);
-    if (!match) throw new Error('Claude returned no valid JSON');
+    if (!match) throw new Error('Claude לא החזיר JSON תקין. אנא נסה שנית.');
     parsed = JSON.parse(match[0]);
   }
 
@@ -94,44 +120,77 @@ function parseAnalysisJson(text: string): AiBlueprintAnalysis {
   };
 }
 
-export async function analyzeImage(base64Data: string, mimeType: string): Promise<AiBlueprintAnalysis> {
-  const supportedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
-  const mediaType = (supportedTypes.includes(mimeType) ? mimeType : 'image/jpeg') as
-    'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp';
+export async function analyzeImage(rawBase64: string, mimeType: string): Promise<AiBlueprintAnalysis> {
+  const base64 = cleanBase64(rawBase64);
+  validateImageSize(base64);
 
-  const msg = await client.messages.create({
-    model: 'claude-sonnet-4-6',
-    max_tokens: 4096,
-    system: SYSTEM_PROMPT,
-    messages: [{
-      role: 'user',
-      content: [
-        { type: 'image', source: { type: 'base64', media_type: mediaType, data: base64Data } },
-        { type: 'text', text: 'נתח את התוכנית והחזר JSON בלבד.' },
-      ],
-    }],
-  });
+  const mediaType: SupportedImageType = (
+    SUPPORTED_IMAGE_TYPES.includes(mimeType as SupportedImageType)
+      ? mimeType
+      : 'image/jpeg'
+  ) as SupportedImageType;
+
+  console.log(`[vision] analyzeImage: ${mediaType}, ~${(base64.length * 0.75 / 1024).toFixed(0)} KB`);
+
+  let msg: Anthropic.Message;
+  try {
+    msg = await getClient().messages.create({
+      model: 'claude-sonnet-4-6',
+      max_tokens: 4096,
+      system: SYSTEM_PROMPT,
+      messages: [{
+        role: 'user',
+        content: [
+          { type: 'image', source: { type: 'base64', media_type: mediaType, data: base64 } },
+          { type: 'text', text: 'נתח את התוכנית והחזר JSON בלבד.' },
+        ],
+      }],
+    });
+  } catch (err: any) {
+    // Rethrow with detailed info for diagnosis
+    const detail = err?.error?.error?.message ?? err?.message ?? String(err);
+    console.error('[vision] Anthropic API error:', err?.status, detail);
+    throw new Error(`שגיאת ניתוח AI: ${detail}`);
+  }
 
   const text = msg.content.find((b) => b.type === 'text')?.text ?? '';
+  if (!text) throw new Error('Claude לא החזיר תוצאות. אנא נסה שנית.');
   return parseAnalysisJson(text);
 }
 
-export async function analyzePdf(base64Data: string): Promise<AiBlueprintAnalysis> {
-  // Uses Anthropic's PDF beta
-  const msg = await (client.beta.messages as any).create({
-    model: 'claude-sonnet-4-6',
-    max_tokens: 4096,
-    betas: ['pdfs-2024-09-25'],
-    system: SYSTEM_PROMPT,
-    messages: [{
-      role: 'user',
-      content: [
-        { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: base64Data } },
-        { type: 'text', text: 'נתח את תוכנית ה-PDF והחזר JSON בלבד.' },
-      ],
-    }],
-  });
+export async function analyzePdf(rawBase64: string): Promise<AiBlueprintAnalysis> {
+  const base64 = cleanBase64(rawBase64);
+
+  console.log(`[vision] analyzePdf: ~${(base64.length * 0.75 / 1024).toFixed(0)} KB`);
+
+  let msg: any;
+  try {
+    msg = await getClient().beta.messages.create({
+      model: 'claude-sonnet-4-6',
+      max_tokens: 4096,
+      betas: ['pdfs-2024-09-25'],
+      system: SYSTEM_PROMPT,
+      messages: [{
+        role: 'user',
+        content: [
+          {
+            type: 'document',
+            source: { type: 'base64', media_type: 'application/pdf', data: base64 },
+          } as any,
+          { type: 'text', text: 'נתח את תוכנית ה-PDF והחזר JSON בלבד.' },
+        ],
+      }],
+    });
+  } catch (err: any) {
+    const detail = err?.error?.error?.message ?? err?.message ?? String(err);
+    console.error('[vision] Anthropic PDF API error:', err?.status, detail);
+    throw new Error(
+      `שגיאת ניתוח PDF: ${detail}. ` +
+      'נסה להמיר את קובץ ה-PDF לתמונה (PNG/JPG) ולהעלות מחדש.',
+    );
+  }
 
   const text = (msg.content as any[]).find((b: any) => b.type === 'text')?.text ?? '';
+  if (!text) throw new Error('Claude לא החזיר תוצאות מה-PDF. אנא נסה שנית.');
   return parseAnalysisJson(text);
 }
