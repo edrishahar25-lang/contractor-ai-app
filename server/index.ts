@@ -53,16 +53,17 @@ if (IS_PROD) {
 // ── Start ────────────────────────────────────────────────────────────────────
 
 async function start() {
+  // Listen immediately so Railway healthcheck passes before DB init
+  app.listen(PORT, '0.0.0.0', () => {
+    console.log(`[server] running on port ${PORT} (${IS_PROD ? 'production' : 'development'})`);
+    console.log(`[server] AI ready: ${!!process.env.ANTHROPIC_API_KEY}`);
+  });
+
   try {
     await initDb();
   } catch (err) {
     console.warn('[db] Could not initialize DB:', (err as Error).message);
   }
-
-  app.listen(PORT, () => {
-    console.log(`[server] running on port ${PORT} (${IS_PROD ? 'production' : 'development'})`);
-    console.log(`[server] AI ready: ${!!process.env.ANTHROPIC_API_KEY}`);
-  });
 }
 
 start();
