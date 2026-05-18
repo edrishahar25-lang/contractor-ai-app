@@ -11,6 +11,8 @@ import {
   HardHat,
   Camera,
   Map,
+  Sparkles,
+  Zap,
 } from 'lucide-react';
 
 const NAV_ITEMS = [
@@ -23,8 +25,10 @@ const NAV_ITEMS = [
 
 const SECONDARY_NAV = [
   { to: '/photos', label: 'תמונות', icon: Camera, badge: 'בקרוב' },
-  { to: '/blueprint', label: 'תוכניות', icon: Map, badge: 'בקרוב' },
+  { to: '/blueprint', label: 'תוכניות AI', icon: Map, badge: 'חדש' },
 ];
+
+const SIDEBAR_BG = 'linear-gradient(175deg, #020912 0%, #04101f 55%, #061525 100%)';
 
 export default function AppLayout() {
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -34,24 +38,52 @@ export default function AppLayout() {
   const isActive = (to: string, end: boolean) =>
     end ? location.pathname === to : location.pathname.startsWith(to);
 
+  const navItemClass = (active: boolean) =>
+    `flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 ${
+      active
+        ? 'nav-link-active'
+        : 'text-white/45 hover:text-white/85 hover:bg-white/5'
+    }`;
+
   return (
-    <div className="flex h-screen overflow-hidden bg-gray-50">
+    <div className="flex h-screen overflow-hidden" style={{ background: '#04101f' }}>
+
       {/* ── Desktop Sidebar ─────────────────── */}
-      <aside className="no-print hidden lg:flex flex-col fixed right-0 top-0 bottom-0 w-60 bg-slate-900 z-40">
+      <aside
+        className="no-print hidden lg:flex flex-col fixed right-0 top-0 bottom-0 w-64 z-40"
+        style={{ background: SIDEBAR_BG, borderLeft: '1px solid rgba(255,255,255,0.05)' }}
+      >
+        {/* Subtle left border gradient */}
+        <div
+          className="absolute left-0 top-0 bottom-0 w-px"
+          style={{ background: 'linear-gradient(180deg, transparent 0%, rgba(212,160,23,0.3) 40%, rgba(212,160,23,0.15) 70%, transparent 100%)' }}
+        />
+
         {/* Logo */}
         <button
           onClick={() => navigate('/')}
-          className="flex items-center gap-3 px-5 py-5 border-b border-white/10 hover:bg-white/5 transition-colors w-full text-right"
+          className="flex items-center gap-3 px-5 py-5 w-full text-right transition-all hover:bg-white/3"
+          style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}
         >
-          <div className="w-9 h-9 rounded-xl bg-amber-500/20 flex items-center justify-center flex-shrink-0">
+          <div
+            className="w-10 h-10 rounded-2xl flex items-center justify-center flex-shrink-0 relative"
+            style={{
+              background: 'linear-gradient(135deg, rgba(212,160,23,0.22) 0%, rgba(212,160,23,0.08) 100%)',
+              boxShadow: '0 0 16px rgba(212,160,23,0.28), inset 0 1px 0 rgba(255,255,255,0.08)',
+              border: '1px solid rgba(212,160,23,0.25)',
+            }}
+          >
             <HardHat size={20} className="text-amber-400" />
           </div>
-          <div>
-            <div className="text-white font-extrabold text-sm leading-tight">
-              Contractor AI Pro
+          <div className="text-right">
+            <div className="text-white font-extrabold text-sm leading-tight tracking-wide">
+              Contractor
             </div>
-            <div className="text-white/40 text-xs font-normal">
-              מערכת הצעות מחיר
+            <div
+              className="text-xs font-bold tracking-widest uppercase"
+              style={{ color: '#d4a017', letterSpacing: '0.15em' }}
+            >
+              AI Pro
             </div>
           </div>
         </button>
@@ -66,33 +98,39 @@ export default function AppLayout() {
                 key={item.to}
                 to={item.to}
                 end={item.end}
-                className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all
-                  ${active
-                    ? 'bg-amber-500/18 text-amber-400 [background:rgba(201,162,39,0.18)]'
-                    : 'text-white/55 hover:text-white hover:bg-white/8 [hover:background:rgba(255,255,255,0.08)]'
-                  }`}
+                className={navItemClass(active)}
               >
-                <Icon size={18} />
+                <Icon size={17} />
                 <span>{item.label}</span>
               </NavLink>
             );
           })}
 
-          <div className="divider !my-3" />
+          <div
+            className="my-3"
+            style={{ height: '1px', background: 'rgba(255,255,255,0.06)' }}
+          />
 
           {SECONDARY_NAV.map((item) => {
             const Icon = item.icon;
+            const isNew = item.badge === 'חדש';
             return (
               <NavLink
                 key={item.to}
                 to={item.to}
-                className="flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-medium text-white/35 hover:text-white/55 transition-colors"
+                className="flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-medium transition-colors text-white/35 hover:text-white/60 hover:bg-white/4"
               >
                 <div className="flex items-center gap-3">
-                  <Icon size={18} />
+                  <Icon size={17} />
                   <span>{item.label}</span>
                 </div>
-                <span className="text-xs px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400">
+                <span
+                  className="text-xs px-1.5 py-0.5 rounded-md font-bold"
+                  style={isNew
+                    ? { background: 'rgba(212,160,23,0.2)', color: '#f0c040' }
+                    : { background: 'rgba(255,255,255,0.07)', color: 'rgba(232,238,248,0.4)' }
+                  }
+                >
                   {item.badge}
                 </span>
               </NavLink>
@@ -100,36 +138,69 @@ export default function AppLayout() {
           })}
         </nav>
 
-        <div className="p-4 border-t border-white/8 text-center">
-          <p className="text-xs text-white/20">v1.0 • Phase 1</p>
+        {/* AI badge at bottom */}
+        <div
+          className="p-4"
+          style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }}
+        >
+          <div
+            className="flex items-center gap-2 px-3 py-2.5 rounded-xl"
+            style={{ background: 'rgba(212,160,23,0.08)', border: '1px solid rgba(212,160,23,0.15)' }}
+          >
+            <Sparkles size={14} style={{ color: '#d4a017' }} />
+            <span className="text-xs font-semibold" style={{ color: 'rgba(240,192,64,0.8)' }}>
+              Powered by Claude AI
+            </span>
+          </div>
+          <div className="flex items-center justify-between mt-2 px-1">
+            <span className="text-xs" style={{ color: 'rgba(232,238,248,0.18)' }}>v2.0 Pro</span>
+            <div className="flex items-center gap-1">
+              <Zap size={10} style={{ color: 'rgba(212,160,23,0.4)' }} />
+              <span className="text-xs" style={{ color: 'rgba(232,238,248,0.2)' }}>Israel Edition</span>
+            </div>
+          </div>
         </div>
       </aside>
 
       {/* ── Mobile overlay ───────────────────── */}
       {drawerOpen && (
         <div
-          className="no-print fixed inset-0 bg-black/50 z-50 lg:hidden"
+          className="no-print fixed inset-0 z-50 lg:hidden"
+          style={{ background: 'rgba(2,8,16,0.7)', backdropFilter: 'blur(4px)' }}
           onClick={() => setDrawerOpen(false)}
         />
       )}
 
       {/* ── Mobile Drawer ────────────────────── */}
       <aside
-        className={`no-print fixed top-0 right-0 bottom-0 w-72 bg-slate-900 z-50 lg:hidden flex flex-col
-          transition-transform duration-250 ${drawerOpen ? 'translate-x-0' : 'translate-x-full'}`}
+        className={`no-print fixed top-0 right-0 bottom-0 w-72 z-50 lg:hidden flex flex-col
+          transition-transform duration-300 ${drawerOpen ? 'translate-x-0' : 'translate-x-full'}`}
+        style={{ background: SIDEBAR_BG, borderLeft: '1px solid rgba(255,255,255,0.06)' }}
       >
-        <div className="flex items-center justify-between px-5 py-4 border-b border-white/10">
+        <div
+          className="flex items-center justify-between px-5 py-4"
+          style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}
+        >
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-amber-500/20 flex items-center justify-center">
-              <HardHat size={18} className="text-amber-400" />
+            <div
+              className="w-8 h-8 rounded-xl flex items-center justify-center"
+              style={{
+                background: 'linear-gradient(135deg, rgba(212,160,23,0.22) 0%, rgba(212,160,23,0.08) 100%)',
+                border: '1px solid rgba(212,160,23,0.25)',
+              }}
+            >
+              <HardHat size={16} className="text-amber-400" />
             </div>
-            <span className="text-white font-extrabold text-sm">Contractor AI Pro</span>
+            <div>
+              <span className="text-white font-extrabold text-sm">Contractor AI Pro</span>
+            </div>
           </div>
           <button
             onClick={() => setDrawerOpen(false)}
-            className="p-1.5 rounded-lg text-white/50 hover:text-white hover:bg-white/10 transition-colors"
+            className="p-1.5 rounded-lg transition-colors"
+            style={{ color: 'rgba(232,238,248,0.45)', background: 'rgba(255,255,255,0.05)' }}
           >
-            <X size={20} />
+            <X size={18} />
           </button>
         </div>
 
@@ -143,22 +214,22 @@ export default function AppLayout() {
                 to={item.to}
                 end={item.end}
                 onClick={() => setDrawerOpen(false)}
-                className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all
-                  ${active
-                    ? '[background:rgba(201,162,39,0.18)] text-amber-400'
-                    : 'text-white/55 hover:text-white [hover:background:rgba(255,255,255,0.08)]'
-                  }`}
+                className={navItemClass(active)}
               >
-                <Icon size={18} />
+                <Icon size={17} />
                 <span>{item.label}</span>
               </NavLink>
             );
           })}
 
-          <div className="divider !my-3" />
+          <div
+            className="my-3"
+            style={{ height: '1px', background: 'rgba(255,255,255,0.06)' }}
+          />
 
           {SECONDARY_NAV.map((item) => {
             const Icon = item.icon;
+            const isNew = item.badge === 'חדש';
             return (
               <NavLink
                 key={item.to}
@@ -167,10 +238,16 @@ export default function AppLayout() {
                 className="flex items-center justify-between px-4 py-3 rounded-xl text-sm font-medium text-white/35"
               >
                 <div className="flex items-center gap-3">
-                  <Icon size={18} />
+                  <Icon size={17} />
                   <span>{item.label}</span>
                 </div>
-                <span className="text-xs px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400">
+                <span
+                  className="text-xs px-1.5 py-0.5 rounded-md font-bold"
+                  style={isNew
+                    ? { background: 'rgba(212,160,23,0.2)', color: '#f0c040' }
+                    : { background: 'rgba(255,255,255,0.07)', color: 'rgba(232,238,248,0.35)' }
+                  }
+                >
                   {item.badge}
                 </span>
               </NavLink>
@@ -180,17 +257,21 @@ export default function AppLayout() {
       </aside>
 
       {/* ── Main content ─────────────────────── */}
-      <div className="flex-1 flex flex-col lg:mr-60 min-h-0">
+      <div className="flex-1 flex flex-col lg:mr-64 min-h-0">
         {/* Mobile top bar */}
-        <header className="no-print lg:hidden sticky top-0 z-30 flex items-center justify-between px-4 h-14 bg-slate-900 shadow-md">
+        <header
+          className="no-print lg:hidden sticky top-0 z-30 flex items-center justify-between px-4 h-14 shadow-lg"
+          style={{ background: '#030d1c', borderBottom: '1px solid rgba(255,255,255,0.06)' }}
+        >
           <button
-            className="p-2 rounded-lg text-white/70 hover:text-white hover:bg-white/10 transition-colors"
+            className="p-2 rounded-lg transition-colors"
+            style={{ color: 'rgba(232,238,248,0.6)', background: 'rgba(255,255,255,0.06)' }}
             onClick={() => setDrawerOpen(true)}
           >
-            <Menu size={22} />
+            <Menu size={20} />
           </button>
           <div className="flex items-center gap-2">
-            <HardHat size={18} className="text-amber-400" />
+            <HardHat size={16} className="text-amber-400" />
             <span className="text-white font-bold text-sm">Contractor AI Pro</span>
           </div>
           <div className="w-9" />
@@ -202,7 +283,10 @@ export default function AppLayout() {
         </main>
 
         {/* Mobile bottom nav */}
-        <nav className="no-print lg:hidden fixed bottom-0 left-0 right-0 h-16 bg-slate-900 border-t border-white/10 flex z-30">
+        <nav
+          className="no-print lg:hidden fixed bottom-0 left-0 right-0 h-16 flex z-30"
+          style={{ background: '#030d1c', borderTop: '1px solid rgba(255,255,255,0.07)' }}
+        >
           {NAV_ITEMS.slice(0, 5).map((item) => {
             const Icon = item.icon;
             const active = isActive(item.to, item.end);
@@ -211,10 +295,11 @@ export default function AppLayout() {
                 key={item.to}
                 to={item.to}
                 end={item.end}
-                className={`flex-1 flex flex-col items-center justify-center gap-0.5 text-xs font-semibold transition-colors
-                  ${active ? 'text-amber-400' : 'text-white/40 hover:text-white/70'}`}
+                className={`flex-1 flex flex-col items-center justify-center gap-0.5 text-xs font-semibold transition-colors ${
+                  active ? 'text-amber-400' : 'text-white/35'
+                }`}
               >
-                <Icon size={20} />
+                <Icon size={19} />
                 <span className="text-[10px]">{item.label}</span>
               </NavLink>
             );
