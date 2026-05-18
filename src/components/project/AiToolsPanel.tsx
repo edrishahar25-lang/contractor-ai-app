@@ -488,7 +488,7 @@ export default function AiToolsPanel({ project, version, company }: Props) {
           toolKey="shoppingList"
           icon={<ShoppingCart size={16} />}
           title="רשימת קנייה לחנויות"
-          description="כמויות לקנייה לפי ספק, כולל הפרשת בזבוז"
+          description="כמויות לקנייה לפי ספק, כולל אחוזי בזבוז"
           state={s.shoppingList}
           onToggle={() => toggle('shoppingList')}
         >
