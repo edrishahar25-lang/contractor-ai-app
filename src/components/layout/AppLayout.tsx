@@ -30,8 +30,6 @@ const SECONDARY_NAV = [
   { to: '/blueprint', label: 'תוכניות AI', icon: Map },
 ];
 
-const SIDEBAR_BG = 'linear-gradient(175deg, #020912 0%, #04101f 55%, #061525 100%)';
-
 export default function AppLayout() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const navigate = useNavigate();
@@ -44,46 +42,39 @@ export default function AppLayout() {
     `flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 ${
       active
         ? 'nav-link-active'
-        : 'text-white/45 hover:text-white/85 hover:bg-white/5'
+        : 'text-slate-500 hover:text-slate-800 hover:bg-slate-50'
     }`;
 
   return (
-    <div className="flex h-screen overflow-hidden" style={{ background: '#04101f' }}>
+    <div className="flex h-screen overflow-hidden" style={{ background: '#f8fafc' }}>
 
       {/* ── Desktop Sidebar ─────────────────── */}
       <aside
-        className="no-print hidden lg:flex flex-col fixed right-0 top-0 bottom-0 w-64 z-40"
-        style={{ background: SIDEBAR_BG, borderLeft: '1px solid rgba(255,255,255,0.05)' }}
+        className="no-print hidden lg:flex flex-col fixed right-0 top-0 bottom-0 w-64 z-40 bg-white"
+        style={{ borderLeft: '1px solid #e2e8f0', boxShadow: '-4px 0 24px rgba(0,0,0,0.04)' }}
       >
-        {/* Subtle left border gradient */}
-        <div
-          className="absolute left-0 top-0 bottom-0 w-px"
-          style={{ background: 'linear-gradient(180deg, transparent 0%, rgba(212,160,23,0.3) 40%, rgba(212,160,23,0.15) 70%, transparent 100%)' }}
-        />
-
         {/* Logo */}
         <button
           onClick={() => navigate('/')}
-          className="flex items-center gap-3 px-5 py-5 w-full text-right transition-all hover:bg-white/3"
-          style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}
+          className="flex items-center gap-3 px-5 py-5 w-full text-right transition-all hover:bg-slate-50"
+          style={{ borderBottom: '1px solid #f1f5f9' }}
         >
           <div
-            className="w-10 h-10 rounded-2xl flex items-center justify-center flex-shrink-0 relative"
+            className="w-10 h-10 rounded-2xl flex items-center justify-center flex-shrink-0"
             style={{
-              background: 'linear-gradient(135deg, rgba(212,160,23,0.22) 0%, rgba(212,160,23,0.08) 100%)',
-              boxShadow: '0 0 16px rgba(212,160,23,0.28), inset 0 1px 0 rgba(255,255,255,0.08)',
-              border: '1px solid rgba(212,160,23,0.25)',
+              background: 'linear-gradient(135deg, #0d9488 0%, #14b8a6 100%)',
+              boxShadow: '0 4px 14px rgba(13,148,136,0.35)',
             }}
           >
-            <HardHat size={20} className="text-amber-400" />
+            <HardHat size={20} className="text-white" />
           </div>
           <div className="text-right">
-            <div className="text-white font-extrabold text-sm leading-tight tracking-wide">
+            <div className="text-slate-800 font-extrabold text-sm leading-tight tracking-wide">
               Contractor
             </div>
             <div
               className="text-xs font-bold tracking-widest uppercase"
-              style={{ color: '#d4a017', letterSpacing: '0.15em' }}
+              style={{ color: '#0d9488', letterSpacing: '0.15em' }}
             >
               AI Pro
             </div>
@@ -108,10 +99,7 @@ export default function AppLayout() {
             );
           })}
 
-          <div
-            className="my-3"
-            style={{ height: '1px', background: 'rgba(255,255,255,0.06)' }}
-          />
+          <div className="my-3" style={{ height: '1px', background: '#f1f5f9' }} />
 
           {SECONDARY_NAV.map((item) => {
             const Icon = item.icon;
@@ -130,24 +118,21 @@ export default function AppLayout() {
         </nav>
 
         {/* AI badge at bottom */}
-        <div
-          className="p-4"
-          style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }}
-        >
+        <div className="p-4" style={{ borderTop: '1px solid #f1f5f9' }}>
           <div
             className="flex items-center gap-2 px-3 py-2.5 rounded-xl"
-            style={{ background: 'rgba(212,160,23,0.08)', border: '1px solid rgba(212,160,23,0.15)' }}
+            style={{ background: '#f0fdfa', border: '1px solid #ccfbf1' }}
           >
-            <Sparkles size={14} style={{ color: '#d4a017' }} />
-            <span className="text-xs font-semibold" style={{ color: 'rgba(240,192,64,0.8)' }}>
+            <Sparkles size={14} style={{ color: '#0d9488' }} />
+            <span className="text-xs font-semibold" style={{ color: '#0f766e' }}>
               Powered by Claude AI
             </span>
           </div>
           <div className="flex items-center justify-between mt-2 px-1">
-            <span className="text-xs" style={{ color: 'rgba(232,238,248,0.18)' }}>v2.0 Pro</span>
+            <span className="text-xs text-slate-400">v2.0 Pro</span>
             <div className="flex items-center gap-1">
-              <Zap size={10} style={{ color: 'rgba(212,160,23,0.4)' }} />
-              <span className="text-xs" style={{ color: 'rgba(232,238,248,0.2)' }}>Israel Edition</span>
+              <Zap size={10} className="text-teal-400" />
+              <span className="text-xs text-slate-400">Israel Edition</span>
             </div>
           </div>
         </div>
@@ -157,39 +142,34 @@ export default function AppLayout() {
       {drawerOpen && (
         <div
           className="no-print fixed inset-0 z-50 lg:hidden"
-          style={{ background: 'rgba(2,8,16,0.7)', backdropFilter: 'blur(4px)' }}
+          style={{ background: 'rgba(15,23,42,0.4)', backdropFilter: 'blur(4px)' }}
           onClick={() => setDrawerOpen(false)}
         />
       )}
 
       {/* ── Mobile Drawer ────────────────────── */}
       <aside
-        className={`no-print fixed top-0 right-0 bottom-0 w-72 z-50 lg:hidden flex flex-col
+        className={`no-print fixed top-0 right-0 bottom-0 w-72 z-50 lg:hidden flex flex-col bg-white
           transition-transform duration-300 ${drawerOpen ? 'translate-x-0' : 'translate-x-full'}`}
-        style={{ background: SIDEBAR_BG, borderLeft: '1px solid rgba(255,255,255,0.06)' }}
+        style={{ borderLeft: '1px solid #e2e8f0', boxShadow: '-8px 0 32px rgba(0,0,0,0.08)' }}
       >
         <div
           className="flex items-center justify-between px-5 py-4"
-          style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}
+          style={{ borderBottom: '1px solid #f1f5f9' }}
         >
           <div className="flex items-center gap-3">
             <div
               className="w-8 h-8 rounded-xl flex items-center justify-center"
-              style={{
-                background: 'linear-gradient(135deg, rgba(212,160,23,0.22) 0%, rgba(212,160,23,0.08) 100%)',
-                border: '1px solid rgba(212,160,23,0.25)',
-              }}
+              style={{ background: 'linear-gradient(135deg, #0d9488, #14b8a6)', boxShadow: '0 3px 10px rgba(13,148,136,0.3)' }}
             >
-              <HardHat size={16} className="text-amber-400" />
+              <HardHat size={16} className="text-white" />
             </div>
-            <div>
-              <span className="text-white font-extrabold text-sm">Contractor AI Pro</span>
-            </div>
+            <span className="text-slate-800 font-extrabold text-sm">Contractor AI Pro</span>
           </div>
           <button
             onClick={() => setDrawerOpen(false)}
-            className="p-1.5 rounded-lg transition-colors"
-            style={{ color: 'rgba(232,238,248,0.45)', background: 'rgba(255,255,255,0.05)' }}
+            className="p-1.5 rounded-lg transition-colors hover:bg-slate-100"
+            style={{ color: '#64748b' }}
           >
             <X size={18} />
           </button>
@@ -213,10 +193,7 @@ export default function AppLayout() {
             );
           })}
 
-          <div
-            className="my-3"
-            style={{ height: '1px', background: 'rgba(255,255,255,0.06)' }}
-          />
+          <div className="my-3" style={{ height: '1px', background: '#f1f5f9' }} />
 
           {SECONDARY_NAV.map((item) => {
             const Icon = item.icon;
@@ -240,19 +217,24 @@ export default function AppLayout() {
       <div className="flex-1 flex flex-col lg:mr-64 min-h-0">
         {/* Mobile top bar */}
         <header
-          className="no-print lg:hidden sticky top-0 z-30 flex items-center justify-between px-4 h-14 shadow-lg"
-          style={{ background: '#030d1c', borderBottom: '1px solid rgba(255,255,255,0.06)' }}
+          className="no-print lg:hidden sticky top-0 z-30 flex items-center justify-between px-4 h-14 bg-white shadow-sm"
+          style={{ borderBottom: '1px solid #e2e8f0' }}
         >
           <button
-            className="p-2 rounded-lg transition-colors"
-            style={{ color: 'rgba(232,238,248,0.6)', background: 'rgba(255,255,255,0.06)' }}
+            className="p-2 rounded-lg transition-colors hover:bg-slate-100"
+            style={{ color: '#64748b' }}
             onClick={() => setDrawerOpen(true)}
           >
             <Menu size={20} />
           </button>
           <div className="flex items-center gap-2">
-            <HardHat size={16} className="text-amber-400" />
-            <span className="text-white font-bold text-sm">Contractor AI Pro</span>
+            <div
+              className="w-7 h-7 rounded-lg flex items-center justify-center"
+              style={{ background: 'linear-gradient(135deg, #0d9488, #14b8a6)' }}
+            >
+              <HardHat size={14} className="text-white" />
+            </div>
+            <span className="text-slate-800 font-bold text-sm">Contractor AI Pro</span>
           </div>
           <div className="w-9" />
         </header>
@@ -264,8 +246,8 @@ export default function AppLayout() {
 
         {/* Mobile bottom nav */}
         <nav
-          className="no-print lg:hidden fixed bottom-0 left-0 right-0 h-16 flex z-30"
-          style={{ background: '#030d1c', borderTop: '1px solid rgba(255,255,255,0.07)' }}
+          className="no-print lg:hidden fixed bottom-0 left-0 right-0 h-16 flex z-30 bg-white"
+          style={{ borderTop: '1px solid #e2e8f0', boxShadow: '0 -4px 16px rgba(0,0,0,0.06)' }}
         >
           {NAV_ITEMS.slice(0, 5).map((item) => {
             const Icon = item.icon;
@@ -276,7 +258,7 @@ export default function AppLayout() {
                 to={item.to}
                 end={item.end}
                 className={`flex-1 flex flex-col items-center justify-center gap-0.5 text-xs font-semibold transition-colors ${
-                  active ? 'text-amber-400' : 'text-white/35'
+                  active ? 'text-teal-600' : 'text-slate-400'
                 }`}
               >
                 <Icon size={19} />

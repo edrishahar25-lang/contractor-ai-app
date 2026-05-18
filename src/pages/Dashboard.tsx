@@ -25,12 +25,21 @@ import { Button } from '../components/ui';
 type StatVariant = 'gold' | 'blue' | 'green' | 'purple' | 'red' | 'teal';
 
 const ICON_COLORS: Record<StatVariant, string> = {
-  gold: '#f0c040',
-  blue: '#60a5fa',
-  green: '#4ade80',
-  purple: '#c084fc',
-  red: '#f87171',
-  teal: '#2dd4bf',
+  gold: '#d97706',
+  blue: '#2563eb',
+  green: '#16a34a',
+  purple: '#9333ea',
+  red: '#dc2626',
+  teal: '#0d9488',
+};
+
+const ICON_BG: Record<StatVariant, string> = {
+  gold: 'rgba(217,119,6,0.1)',
+  blue: 'rgba(37,99,235,0.1)',
+  green: 'rgba(22,163,74,0.1)',
+  purple: 'rgba(147,51,234,0.1)',
+  red: 'rgba(220,38,38,0.1)',
+  teal: 'rgba(13,148,136,0.1)',
 };
 
 function StatCard({
@@ -53,7 +62,7 @@ function StatCard({
     <div className={`stat-card stat-${variant}`}>
       <div className="flex items-start justify-between gap-3">
         <div className="flex-1 min-w-0">
-          <p className="text-xs font-semibold mb-1.5" style={{ color: 'rgba(232,238,248,0.5)' }}>
+          <p className="text-xs font-semibold mb-1.5 text-slate-500">
             {label}
           </p>
           <p
@@ -63,16 +72,14 @@ function StatCard({
             {value}
           </p>
           {sub && (
-            <p className="text-xs mt-1" style={{ color: 'rgba(232,238,248,0.38)' }}>
+            <p className="text-xs mt-1 text-slate-400">
               {sub}
             </p>
           )}
         </div>
         <div
           className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
-          style={{
-            background: `rgba(${variant === 'gold' ? '212,160,23' : variant === 'blue' ? '59,130,246' : variant === 'green' ? '34,197,94' : variant === 'purple' ? '168,85,247' : variant === 'red' ? '239,68,68' : '20,184,166'}, 0.15)`,
-          }}
+          style={{ background: ICON_BG[variant] }}
         >
           <span style={{ color: iconColor }}>{icon}</span>
         </div>
@@ -141,13 +148,13 @@ export default function Dashboard() {
       {/* Hero header */}
       <div className="flex flex-wrap items-start justify-between gap-3 mb-8">
         <div>
-          <p className="text-xs font-semibold mb-1" style={{ color: 'rgba(212,160,23,0.7)' }}>
+          <p className="text-xs font-semibold mb-1" style={{ color: '#0d9488' }}>
             {today}
           </p>
-          <h1 className="text-3xl font-black mb-1" style={{ color: '#f0f4ff' }}>
+          <h1 className="text-3xl font-black mb-1 text-slate-900">
             {company?.companyName ? `שלום, ${company.companyName}` : 'ברוך הבא'}
           </h1>
-          <p className="text-sm" style={{ color: 'rgba(232,238,248,0.45)' }}>
+          <p className="text-sm text-slate-500">
             {total > 0
               ? `${total} פרויקטים פעילים • ${signed} חתומים • ${inProgress} בביצוע`
               : 'צור את הפרויקט הראשון שלך'}
@@ -239,7 +246,7 @@ export default function Dashboard() {
 
       {/* Quick actions */}
       <div className="mb-8">
-        <h2 className="text-sm font-bold mb-3" style={{ color: 'rgba(232,238,248,0.5)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+        <h2 className="text-xs font-bold mb-3 text-slate-400 uppercase tracking-widest">
           פעולות מהירות
         </h2>
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
@@ -255,37 +262,24 @@ export default function Dashboard() {
               <button
                 key={action.label}
                 onClick={action.onClick}
-                className="flex flex-col items-center gap-2.5 py-4 px-3 rounded-2xl text-sm font-semibold transition-all duration-200 group"
+                className="flex flex-col items-center gap-2.5 py-4 px-3 rounded-2xl text-sm font-semibold transition-all duration-200 group hover:-translate-y-0.5"
                 style={action.primary ? {
-                  background: 'linear-gradient(135deg, rgba(212,160,23,0.18) 0%, rgba(212,160,23,0.08) 100%)',
-                  border: '1px solid rgba(212,160,23,0.3)',
-                  color: '#f0c040',
+                  background: 'linear-gradient(135deg, #0d9488 0%, #14b8a6 100%)',
+                  color: 'white',
+                  boxShadow: '0 4px 16px rgba(13,148,136,0.3)',
                 } : {
-                  background: 'rgba(255,255,255,0.04)',
-                  border: '1px solid rgba(255,255,255,0.08)',
-                  color: 'rgba(232,238,248,0.65)',
-                }}
-                onMouseEnter={(e) => {
-                  if (!action.primary) {
-                    (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.07)';
-                    (e.currentTarget as HTMLElement).style.borderColor = 'rgba(255,255,255,0.15)';
-                    (e.currentTarget as HTMLElement).style.color = 'rgba(232,238,248,0.9)';
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  if (!action.primary) {
-                    (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.04)';
-                    (e.currentTarget as HTMLElement).style.borderColor = 'rgba(255,255,255,0.08)';
-                    (e.currentTarget as HTMLElement).style.color = 'rgba(232,238,248,0.65)';
-                  }
+                  background: 'white',
+                  border: '1px solid #e2e8f0',
+                  color: '#475569',
+                  boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
                 }}
               >
                 <div
                   className="w-10 h-10 rounded-xl flex items-center justify-center transition-transform group-hover:scale-110"
                   style={action.primary ? {
-                    background: 'rgba(212,160,23,0.2)',
+                    background: 'rgba(255,255,255,0.2)',
                   } : {
-                    background: 'rgba(255,255,255,0.06)',
+                    background: '#f1f5f9',
                   }}
                 >
                   <Icon size={19} />
@@ -300,16 +294,13 @@ export default function Dashboard() {
       {/* Recent projects */}
       <div>
         <div className="flex items-center justify-between mb-3">
-          <h2 className="text-sm font-bold" style={{ color: 'rgba(232,238,248,0.5)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+          <h2 className="text-xs font-bold text-slate-400 uppercase tracking-widest">
             פרויקטים אחרונים
           </h2>
           {activeProjects.length > 0 && (
             <button
               onClick={() => navigate('/projects')}
-              className="text-xs font-semibold flex items-center gap-1 transition-colors"
-              style={{ color: 'rgba(212,160,23,0.7)' }}
-              onMouseEnter={(e) => (e.currentTarget.style.color = '#f0c040')}
-              onMouseLeave={(e) => (e.currentTarget.style.color = 'rgba(212,160,23,0.7)')}
+              className="text-xs font-semibold flex items-center gap-1 transition-colors text-teal-600 hover:text-teal-700"
             >
               הכל
               <ChevronLeft size={13} />
@@ -322,9 +313,9 @@ export default function Dashboard() {
             <div className="p-12 flex flex-col items-center gap-4 text-center">
               <div
                 className="w-16 h-16 rounded-2xl flex items-center justify-center"
-                style={{ background: 'rgba(212,160,23,0.1)', border: '1px solid rgba(212,160,23,0.2)' }}
+                style={{ background: '#f0fdfa', border: '1px solid #99f6e4' }}
               >
-                <HardHat size={28} style={{ color: '#d4a017' }} />
+                <HardHat size={28} style={{ color: '#0d9488' }} />
               </div>
               <div>
                 <p className="font-bold text-slate-800 text-base mb-1">עדיין אין פרויקטים</p>

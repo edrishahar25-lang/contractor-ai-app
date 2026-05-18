@@ -7,28 +7,34 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        navy: {
-          DEFAULT: '#0f1b2d',
-          light: '#1a2d4a',
-          mid: '#162236',
-          50: '#f0f4f8',
+        primary: {
+          50:  '#f0fdfa',
+          100: '#ccfbf1',
+          200: '#99f6e4',
+          300: '#5eead4',
+          400: '#2dd4bf',
+          500: '#14b8a6',
+          600: '#0d9488',
+          700: '#0f766e',
+          800: '#115e59',
+          900: '#134e4a',
+          DEFAULT: '#0d9488',
         },
+        orange: {
+          DEFAULT: '#f97316',
+          light: '#fb923c',
+          dark: '#ea580c',
+        },
+        navy: {
+          DEFAULT: '#0f172a',
+          light: '#1e293b',
+          50: '#f8fafc',
+        },
+        // Keep gold for proposal/print use
         gold: {
           DEFAULT: '#d4a017',
           light: '#f0c040',
-          bright: '#ffd166',
-          dark: '#9e7c1a',
           50: '#fdf8ec',
-          100: '#faf0cc',
-        },
-        obsidian: {
-          950: '#020810',
-          900: '#04101f',
-          850: '#061628',
-          800: '#091e34',
-          750: '#0d2540',
-          700: '#112c4c',
-          600: '#163656',
         },
       },
       fontFamily: {
@@ -43,16 +49,15 @@ module.exports = {
         '12': '3rem',
       },
       boxShadow: {
-        card: '0 2px 16px rgba(0,0,0,0.1), 0 1px 4px rgba(0,0,0,0.08)',
-        'card-md': '0 8px 32px rgba(0,0,0,0.15), 0 2px 8px rgba(0,0,0,0.1)',
-        'card-lg': '0 20px 60px rgba(0,0,0,0.22), 0 4px 16px rgba(0,0,0,0.12)',
-        'card-hover': '0 16px 48px rgba(0,0,0,0.18), 0 4px 12px rgba(0,0,0,0.1)',
-        'glow-gold': '0 0 24px rgba(212,160,23,0.55), 0 0 48px rgba(212,160,23,0.2)',
-        'glow-gold-sm': '0 0 12px rgba(212,160,23,0.5)',
-        'glow-gold-btn': '0 6px 24px rgba(212,160,23,0.45)',
-        'glow-blue': '0 0 20px rgba(79,142,247,0.45)',
-        'glow-green': '0 0 16px rgba(34,197,94,0.4)',
-        'glow-purple': '0 0 16px rgba(168,85,247,0.35)',
+        card:      '0 1px 3px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.04)',
+        'card-md': '0 4px 24px rgba(0,0,0,0.08), 0 2px 8px rgba(0,0,0,0.05)',
+        'card-lg': '0 12px 40px rgba(0,0,0,0.12), 0 4px 12px rgba(0,0,0,0.06)',
+        'card-hover': '0 8px 32px rgba(0,0,0,0.1), 0 2px 8px rgba(0,0,0,0.06)',
+        'glow-teal':  '0 0 20px rgba(13,148,136,0.4), 0 0 40px rgba(13,148,136,0.15)',
+        'glow-teal-sm': '0 0 12px rgba(13,148,136,0.35)',
+        'glow-teal-btn': '0 6px 24px rgba(13,148,136,0.4)',
+        // Legacy (used in blueprint/proposal)
+        'glow-gold': '0 0 20px rgba(212,160,23,0.4)',
       },
     },
   },
