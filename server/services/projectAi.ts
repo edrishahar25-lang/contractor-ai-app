@@ -350,3 +350,260 @@ ${itemsText}
   if (!text) throw new Error('לא ניתן לייצר חוזה');
   return text.trim();
 }
+
+// ─── 6. Budget Guardian ────────────────────────────────────────────────────────
+
+export interface BudgetGuardianRequest {
+  budget: number;
+  propertyType: string;
+  totalSqm: number;
+  items: WorkItemSummary[];
+  currentTotal: number;
+}
+
+export interface BudgetGuardianItem {
+  name: string;
+  total: number;
+  priority: 'must' | 'should' | 'nice';
+}
+
+export interface BudgetGuardianResult {
+  adjustedTotal: number;
+  savings: number;
+  keptItems: BudgetGuardianItem[];
+  removedItems: Array<{ name: string; total: number; reason: string }>;
+  suggestions: string[];
+  warning?: string;
+}
+
+export async function runBudgetGuardian(req: BudgetGuardianRequest): Promise<BudgetGuardianResult> {
+  const itemsText = req.items
+    .map((it) => `  - ${it.itemName} (${it.categoryName}): ${it.quantity} ${it.unit}${it.unitPrice ? ` × ₪${it.unitPrice}` : ''}`)
+    .join('\n');
+
+  const prompt = `
+אתה יועץ כלכלי לפרויקטי שיפוצים בישראל. הלקוח הגדיר תקציב מקסימלי והמחיר הנוכחי גבוה יותר.
+
+פרויקט: ${req.propertyType} | ${req.totalSqm} מ"ר
+מחיר נוכחי (כולל מע"מ): ₪${req.currentTotal.toLocaleString('he-IL')}
+תקציב מקסימלי (כולל מע"מ): ₪${req.budget.toLocaleString('he-IL')}
+נדרש לחסוך: ₪${(req.currentTotal - req.budget).toLocaleString('he-IL')}
+
+היקף עבודה נוכחי:
+${itemsText}
+
+החזר JSON בלבד, ללא markdown:
+{
+  "adjustedTotal": מחיר_מותאם_כולל_מעמ,
+  "savings": חיסכון_שהושג,
+  "keptItems": [{ "name": "שם פריט", "total": מחיר_כולל_מעמ, "priority": "must|should|nice" }],
+  "removedItems": [{ "name": "שם פריט", "total": מחיר_שנחסך, "reason": "סיבה לגריעה" }],
+  "suggestions": ["המלצה לחיסכון נוסף"],
+  "warning": "אזהרה אם התקציב לא מציאותי"
+}
+
+כללים:
+- must = הכרחי לתפקוד הנכס
+- should = חשוב אבל ניתן לדחות
+- nice = אסתטי/שדרוג בלבד
+- הוסף מע"מ 17% לכל חישוב
+- אם התקציב לא ריאלי, הסבר בwarning
+- השתמש בעברית פשוטה ותקנית
+`.trim();
+
+  const msg = await getClient().messages.create({
+    model: 'claude-sonnet-4-6',
+    max_tokens: 1200,
+    messages: [{ role: 'user', content: prompt }],
+  });
+
+  const text = msg.content.find((b) => b.type === 'text')?.text ?? '';
+  return JSON.parse(stripJson(text)) as BudgetGuardianResult;
+}
+
+// ─── 7. Risk Score ─────────────────────────────────────────────────────────────
+
+export interface RiskScoreRequest {
+  clientName: string;
+  address: string;
+  city: string;
+  propertyType: string;
+  totalSqm: number;
+  condition: string;
+  totalWithVat: number;
+  items: WorkItemSummary[];
+}
+
+export interface RiskFactor {
+  name: string;
+  emoji: string;
+  impact: 'positive' | 'negative' | 'neutral';
+  description: string;
+}
+
+export interface RiskScoreResult {
+  score: number;
+  level: 'low' | 'medium' | 'high' | 'critical';
+  factors: RiskFactor[];
+  recommendations: string[];
+  summary: string;
+}
+
+export async function calculateRiskScore(req: RiskScoreRequest): Promise<RiskScoreResult> {
+  const itemsText = req.items
+    .map((it) => `  - ${it.itemName}: ${it.quantity} ${it.unit}`)
+    .join('\n');
+
+  const prompt = `
+אתה מנהל פרויקטים ישראלי עם 20 שנה ניסיון. הערך את רמת הסיכון של הפרויקט הזה.
+
+פרויקט:
+- לקוח: ${req.clientName} | ${req.address}, ${req.city}
+- נכס: ${req.propertyType}, ${req.totalSqm} מ"ר, מצב: ${req.condition}
+- שווי: ₪${req.totalWithVat.toLocaleString('he-IL')}
+
+עבודות:
+${itemsText}
+
+החזר JSON בלבד, ללא markdown:
+{
+  "score": מספר_0_עד_100_100_הכי_בטוח,
+  "level": "low|medium|high|critical",
+  "factors": [
+    { "name": "שם גורם", "emoji": "🔧", "impact": "positive|negative|neutral", "description": "הסבר קצר" }
+  ],
+  "recommendations": ["המלצה קונקרטית להפחתת סיכון"],
+  "summary": "סיכום 2 משפטים על רמת הסיכון"
+}
+
+גורמי סיכון לבדיקה: היקף עבודה, מורכבות טכנית, מצב נכס, שווי פרויקט, מגוון קבלני משנה.
+השתמש בעברית פשוטה ותקנית.
+`.trim();
+
+  const msg = await getClient().messages.create({
+    model: 'claude-sonnet-4-6',
+    max_tokens: 1000,
+    messages: [{ role: 'user', content: prompt }],
+  });
+
+  const text = msg.content.find((b) => b.type === 'text')?.text ?? '';
+  return JSON.parse(stripJson(text)) as RiskScoreResult;
+}
+
+// ─── 8. Payment Reminders ─────────────────────────────────────────────────────
+
+export interface PaymentReminderRequest {
+  clientName: string;
+  address: string;
+  totalAmount: number;
+  daysPastDue: number;
+  companyName: string;
+  companyPhone: string;
+  notes?: string;
+}
+
+export interface PaymentReminderResult {
+  gentle: string;
+  firm: string;
+  formal: string;
+}
+
+export async function generatePaymentReminders(req: PaymentReminderRequest): Promise<PaymentReminderResult> {
+  const prompt = `
+אתה עוזר AI לקבלן ישראלי. כתוב 3 גרסאות של הודעת WhatsApp לגביית תשלום בעברית פשוטה.
+
+פרטים:
+- לקוח: ${req.clientName}
+- עבודה ב: ${req.address}
+- סכום לתשלום: ₪${req.totalAmount.toLocaleString('he-IL')}
+- ימים מאז המועד: ${req.daysPastDue} ימים
+- חברה: ${req.companyName} | ${req.companyPhone}
+${req.notes ? `- הערות: ${req.notes}` : ''}
+
+החזר JSON בלבד, ללא markdown:
+{
+  "gentle": "הודעה רכה ומכובדת — כאילו שכחת לשלם",
+  "firm": "הודעה נחרצת ועסקית — זה מפריע לנו",
+  "formal": "הודעה רשמית לפני נקיטת צעדים משפטיים"
+}
+
+כללים:
+- השתמש רק במילים עבריות פשוטות שכל אדם מכיר
+- אל תמציא מילים חדשות
+- כל הודעה: 3-5 שורות
+- סיים עם שם החברה ומספר טלפון
+`.trim();
+
+  const msg = await getClient().messages.create({
+    model: 'claude-haiku-4-5-20251001',
+    max_tokens: 800,
+    messages: [{ role: 'user', content: prompt }],
+  });
+
+  const text = msg.content.find((b) => b.type === 'text')?.text ?? '';
+  return JSON.parse(stripJson(text)) as PaymentReminderResult;
+}
+
+// ─── 9. Competitive Intelligence ──────────────────────────────────────────────
+
+export interface CompetitiveIntelRequest {
+  propertyType: string;
+  totalSqm: number;
+  finishLevel: string;
+  totalBeforeVat: number;
+  items: WorkItemSummary[];
+}
+
+export interface CompetitiveIntelResult {
+  verdict: 'below' | 'market' | 'above' | 'premium';
+  marketRangeLow: number;
+  marketRangeHigh: number;
+  yourPricePerSqm: number;
+  marketPricePerSqm: number;
+  percentDiff: number;
+  analysis: string;
+  suggestions: string[];
+}
+
+export async function analyzeCompetitiveIntel(req: CompetitiveIntelRequest): Promise<CompetitiveIntelResult> {
+  const itemsText = req.items
+    .map((it) => `  - ${it.itemName}: ${it.quantity} ${it.unit}${it.unitPrice ? ` × ₪${it.unitPrice}` : ''}`)
+    .join('\n');
+
+  const prompt = `
+אתה יועץ תמחור לפרויקטי שיפוץ בישראל. השווה את המחיר לשוק ישראל 2024-2025.
+
+פרויקט:
+- סוג נכס: ${req.propertyType}
+- שטח: ${req.totalSqm} מ"ר
+- רמת גמר: ${req.finishLevel}
+- מחיר לפני מע"מ: ₪${req.totalBeforeVat.toLocaleString('he-IL')} = ₪${Math.round(req.totalBeforeVat / req.totalSqm).toLocaleString('he-IL')} למ"ר
+
+עבודות:
+${itemsText}
+
+החזר JSON בלבד, ללא markdown:
+{
+  "verdict": "below|market|above|premium",
+  "marketRangeLow": מחיר_נמוך_שוק_לפני_מעמ,
+  "marketRangeHigh": מחיר_גבוה_שוק_לפני_מעמ,
+  "yourPricePerSqm": מחיר_שלך_למטר_לפני_מעמ,
+  "marketPricePerSqm": מחיר_שוק_ממוצע_למטר,
+  "percentDiff": אחוז_הפרש_חיובי_מעל_שוק_שלילי_מתחת,
+  "analysis": "ניתוח קצר 2-3 משפטים",
+  "suggestions": ["הצעה קונקרטית לשיפור התמחור"]
+}
+
+below = מתחת 15% לשוק, market = טווח נורמלי, above = מעל 15%, premium = מעל 40%
+השתמש בנתוני שוק ישראל 2024-2025 לפי סוג נכס ורמת גמר.
+`.trim();
+
+  const msg = await getClient().messages.create({
+    model: 'claude-sonnet-4-6',
+    max_tokens: 800,
+    messages: [{ role: 'user', content: prompt }],
+  });
+
+  const text = msg.content.find((b) => b.type === 'text')?.text ?? '';
+  return JSON.parse(stripJson(text)) as CompetitiveIntelResult;
+}

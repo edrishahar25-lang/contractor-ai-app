@@ -13,12 +13,14 @@ import {
   Map,
   Sparkles,
   Zap,
+  Mic,
 } from 'lucide-react';
 
 const NAV_ITEMS = [
   { to: '/', label: 'דשבורד', icon: LayoutDashboard, end: true },
   { to: '/projects', label: 'הצעות מחיר', icon: FolderOpen, end: false },
   { to: '/project/new', label: 'פרויקט חדש', icon: PlusCircle, end: false },
+  { to: '/voice', label: 'Voice to Quote', icon: Mic, end: false },
   { to: '/pricing', label: 'מחירון', icon: Tag, end: false },
   { to: '/settings', label: 'הגדרות', icon: Settings, end: false },
 ];

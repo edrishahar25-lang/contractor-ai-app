@@ -8,6 +8,7 @@ import { router as projectsRouter } from './routes/projects';
 import { router as estimateRouter } from './routes/estimate';
 import { router as projectAiRouter } from './routes/projectAi';
 import { router as photosRouter } from './routes/photos';
+import { router as voiceRouter } from './routes/voice';
 
 const PORT = parseInt(process.env.PORT ?? '3001', 10);
 const IS_PROD = process.env.NODE_ENV === 'production';
@@ -39,6 +40,7 @@ app.use('/api/projects', projectsRouter);
 app.use('/api/estimate', estimateRouter);
 app.use('/api/project-ai', projectAiRouter);
 app.use('/api/photos', photosRouter);
+app.use('/api/voice', voiceRouter);
 
 // ── Static frontend (production only) ──────────────────────────────────────
 

@@ -5,6 +5,10 @@ import {
   calculateScopeChange,
   generateShoppingList,
   generateContract,
+  runBudgetGuardian,
+  calculateRiskScore,
+  generatePaymentReminders,
+  analyzeCompetitiveIntel,
 } from '../services/projectAi';
 
 export const router = Router();
@@ -68,6 +72,50 @@ router.post('/contract', async (req: Request, res: Response) => {
     res.json({ contractText });
   } catch (err) {
     console.error('[project-ai/contract]', (err as Error).message);
+    res.status(500).json({ error: (err as Error).message });
+  }
+});
+
+router.post('/budget', async (req: Request, res: Response) => {
+  if (!requireKey(res)) return;
+  try {
+    const result = await runBudgetGuardian(req.body);
+    res.json(result);
+  } catch (err) {
+    console.error('[project-ai/budget]', (err as Error).message);
+    res.status(500).json({ error: (err as Error).message });
+  }
+});
+
+router.post('/risk', async (req: Request, res: Response) => {
+  if (!requireKey(res)) return;
+  try {
+    const result = await calculateRiskScore(req.body);
+    res.json(result);
+  } catch (err) {
+    console.error('[project-ai/risk]', (err as Error).message);
+    res.status(500).json({ error: (err as Error).message });
+  }
+});
+
+router.post('/payment-reminder', async (req: Request, res: Response) => {
+  if (!requireKey(res)) return;
+  try {
+    const result = await generatePaymentReminders(req.body);
+    res.json(result);
+  } catch (err) {
+    console.error('[project-ai/payment-reminder]', (err as Error).message);
+    res.status(500).json({ error: (err as Error).message });
+  }
+});
+
+router.post('/competitive-intel', async (req: Request, res: Response) => {
+  if (!requireKey(res)) return;
+  try {
+    const result = await analyzeCompetitiveIntel(req.body);
+    res.json(result);
+  } catch (err) {
+    console.error('[project-ai/competitive-intel]', (err as Error).message);
     res.status(500).json({ error: (err as Error).message });
   }
 });

@@ -12,6 +12,7 @@ import EstimationBriefPage from './pages/estimate/EstimationBriefPage';
 import CompanySettings from './pages/settings/CompanySettings';
 import PricingSettings from './pages/settings/PricingSettings';
 import PhotosPage from './pages/photos/PhotosPage';
+import VoiceQuotePage from './pages/voice/VoiceQuotePage';
 import BlueprintPage from './pages/blueprint/BlueprintPage';
 
 export default function App() {
@@ -30,6 +31,7 @@ export default function App() {
         <Route path="/pricing" element={<PricingSettings />} />
         <Route path="/settings" element={<CompanySettings />} />
         <Route path="/photos" element={<PhotosPage />} />
+        <Route path="/voice" element={<VoiceQuotePage />} />
         <Route path="/blueprint" element={<BlueprintPage />} />
         {/* Catch-all */}
         <Route path="*" element={<Dashboard />} />
