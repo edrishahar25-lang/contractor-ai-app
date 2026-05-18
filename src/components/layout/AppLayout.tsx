@@ -24,8 +24,8 @@ const NAV_ITEMS = [
 ];
 
 const SECONDARY_NAV = [
-  { to: '/photos', label: 'תמונות', icon: Camera, badge: 'בקרוב' },
-  { to: '/blueprint', label: 'תוכניות AI', icon: Map, badge: 'חדש' },
+  { to: '/photos', label: 'ניתוח תמונות', icon: Camera },
+  { to: '/blueprint', label: 'תוכניות AI', icon: Map },
 ];
 
 const SIDEBAR_BG = 'linear-gradient(175deg, #020912 0%, #04101f 55%, #061525 100%)';
@@ -113,26 +113,15 @@ export default function AppLayout() {
 
           {SECONDARY_NAV.map((item) => {
             const Icon = item.icon;
-            const isNew = item.badge === 'חדש';
+            const active = isActive(item.to, false);
             return (
               <NavLink
                 key={item.to}
                 to={item.to}
-                className="flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-medium transition-colors text-white/35 hover:text-white/60 hover:bg-white/4"
+                className={navItemClass(active)}
               >
-                <div className="flex items-center gap-3">
-                  <Icon size={17} />
-                  <span>{item.label}</span>
-                </div>
-                <span
-                  className="text-xs px-1.5 py-0.5 rounded-md font-bold"
-                  style={isNew
-                    ? { background: 'rgba(212,160,23,0.2)', color: '#f0c040' }
-                    : { background: 'rgba(255,255,255,0.07)', color: 'rgba(232,238,248,0.4)' }
-                  }
-                >
-                  {item.badge}
-                </span>
+                <Icon size={17} />
+                <span>{item.label}</span>
               </NavLink>
             );
           })}
@@ -229,27 +218,16 @@ export default function AppLayout() {
 
           {SECONDARY_NAV.map((item) => {
             const Icon = item.icon;
-            const isNew = item.badge === 'חדש';
+            const active = isActive(item.to, false);
             return (
               <NavLink
                 key={item.to}
                 to={item.to}
                 onClick={() => setDrawerOpen(false)}
-                className="flex items-center justify-between px-4 py-3 rounded-xl text-sm font-medium text-white/35"
+                className={navItemClass(active)}
               >
-                <div className="flex items-center gap-3">
-                  <Icon size={17} />
-                  <span>{item.label}</span>
-                </div>
-                <span
-                  className="text-xs px-1.5 py-0.5 rounded-md font-bold"
-                  style={isNew
-                    ? { background: 'rgba(212,160,23,0.2)', color: '#f0c040' }
-                    : { background: 'rgba(255,255,255,0.07)', color: 'rgba(232,238,248,0.35)' }
-                  }
-                >
-                  {item.badge}
-                </span>
+                <Icon size={17} />
+                <span>{item.label}</span>
               </NavLink>
             );
           })}

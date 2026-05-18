@@ -11,7 +11,7 @@ import BOQReviewPage from './pages/project/BOQReviewPage';
 import EstimationBriefPage from './pages/estimate/EstimationBriefPage';
 import CompanySettings from './pages/settings/CompanySettings';
 import PricingSettings from './pages/settings/PricingSettings';
-import PhotosPage from './pages/placeholders/PhotosPage';
+import PhotosPage from './pages/photos/PhotosPage';
 import BlueprintPage from './pages/blueprint/BlueprintPage';
 
 export default function App() {
