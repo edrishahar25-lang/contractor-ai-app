@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="96" fill="#04101f"/>
+  <rect width="512" height="512" rx="96" fill="url(#bg)"/>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#061628"/>
+      <stop offset="100%" stop-color="#020810"/>
+    </linearGradient>
+    <linearGradient id="gold" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#f0c040"/>
+      <stop offset="100%" stop-color="#d4a017"/>
+    </linearGradient>
+  </defs>
+  <!-- Hard hat shape -->
+  <ellipse cx="256" cy="290" rx="160" ry="30" fill="url(#gold)" opacity="0.9"/>
+  <path d="M 130 290 Q 130 200 256 180 Q 382 200 382 290 Z" fill="url(#gold)"/>
+  <!-- Brim highlights -->
+  <ellipse cx="256" cy="290" rx="160" ry="30" fill="none" stroke="#ffd166" stroke-width="3" opacity="0.6"/>
+  <!-- AI spark -->
+  <circle cx="256" cy="230" r="18" fill="#04101f" opacity="0.7"/>
+  <path d="M256 215 L260 228 L273 228 L263 237 L267 250 L256 242 L245 250 L249 237 L239 228 L252 228 Z" fill="#f0c040"/>
+</svg>
