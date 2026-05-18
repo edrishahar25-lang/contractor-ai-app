@@ -6,6 +6,7 @@ import { initDb } from './db';
 import { router as blueprintRouter } from './routes/blueprint';
 import { router as projectsRouter } from './routes/projects';
 import { router as estimateRouter } from './routes/estimate';
+import { router as projectAiRouter } from './routes/projectAi';
 
 const PORT = parseInt(process.env.PORT ?? '3001', 10);
 const IS_PROD = process.env.NODE_ENV === 'production';
@@ -35,6 +36,7 @@ app.use(express.urlencoded({ extended: true, limit: '25mb' }));
 app.use('/api/blueprint', blueprintRouter);
 app.use('/api/projects', projectsRouter);
 app.use('/api/estimate', estimateRouter);
+app.use('/api/project-ai', projectAiRouter);
 
 // ── Static frontend (production only) ──────────────────────────────────────
 

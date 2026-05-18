@@ -33,6 +33,7 @@ import { Button, Card, CardHeader, CardBody, Badge, Alert } from '../../componen
 import { ProjectStatus } from '../../types';
 import { ProposalDocument } from '../../components/proposal/ProposalDocument';
 import { generateProposalPdf, downloadFile } from '../../lib/proposalPdf';
+import AiToolsPanel from '../../components/project/AiToolsPanel';
 
 type PdfStatus = 'idle' | 'generating' | 'success' | 'error';
 
@@ -49,7 +50,7 @@ export default function ProjectView() {
     duplicateProject,
     archiveProject,
   } = useProjectStore();
-  const { company } = useSettingsStore();
+  const { company, pricing } = useSettingsStore();
   const [creatingVersion, setCreatingVersion] = useState(false);
   const [pdfStatus, setPdfStatus] = useState<PdfStatus>('idle');
   const docRef = useRef<HTMLDivElement>(null);
@@ -329,6 +330,9 @@ export default function ProjectView() {
           </CardBody>
         </Card>
       </div>
+
+      {/* AI Tools */}
+      <AiToolsPanel project={project} version={version} company={company} pricing={pricing} />
 
       {/* Version history */}
       {project.versions.length > 1 && (

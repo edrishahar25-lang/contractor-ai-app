@@ -6,7 +6,7 @@
 import { Project, EstimateVersion, CompanySettings } from '../types';
 import { formatCurrency, formatDate } from './format';
 
-function israeliPhoneToIntl(phone: string): string {
+export function israeliPhoneToIntl(phone: string): string {
   const cleaned = phone.replace(/\D/g, '');
   if (cleaned.startsWith('972')) return cleaned;
   if (cleaned.startsWith('0')) return '972' + cleaned.slice(1);
