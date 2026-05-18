@@ -106,7 +106,7 @@ function buildMockAnalysis(): AiBlueprintAnalysis {
 export async function analyzeBlueprint(
   dataUrl: string,
   fileName: string,
-): Promise<{ analysis: AiBlueprintAnalysis; isMock: boolean }> {
+): Promise<{ analysis: AiBlueprintAnalysis; isMock: boolean; blueprintId?: string }> {
   if (USE_MOCK) {
     await sleep(2800);
     return { analysis: buildMockAnalysis(), isMock: true };
@@ -134,7 +134,8 @@ export async function analyzeBlueprint(
   }
 
   const data = await response.json();
-  return { analysis: data as AiBlueprintAnalysis, isMock: false };
+  const { id: blueprintId, ...analysis } = data as AiBlueprintAnalysis & { id?: string };
+  return { analysis, isMock: false, blueprintId };
 }
 
 // ─── BOQ derivation from approved analysis ────────────────────────────────────

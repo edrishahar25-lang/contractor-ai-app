@@ -81,11 +81,47 @@ router.post('/analyze', async (req: Request, res: Response) => {
       } catch { /* non-fatal */ }
     }
 
-    res.json(analysis);
+    res.json({ id, ...analysis });
   } catch (err) {
     const message = err instanceof Error ? err.message : 'שגיאה לא ידועה בניתוח התוכנית';
     console.error('[blueprint/analyze] error:', message);
     res.status(500).json({ error: message });
+  }
+});
+
+// POST /api/blueprint/:id/feedback  — saves contractor corrections for few-shot learning
+router.post('/:id/feedback', async (req: Request, res: Response) => {
+  const pool = getPool();
+  if (!pool) { res.status(200).json({ saved: 0 }); return; }
+
+  const blueprintId = req.params.id;
+  const { corrections } = req.body as {
+    corrections: Array<{
+      fieldType: string;
+      itemId: string;
+      aiValue: string | number;
+      correctedValue: string | number;
+    }>;
+  };
+
+  if (!Array.isArray(corrections) || corrections.length === 0) {
+    res.status(200).json({ saved: 0 });
+    return;
+  }
+
+  try {
+    const now = new Date().toISOString();
+    for (const c of corrections) {
+      await pool.query(
+        `INSERT INTO blueprint_feedback (id, blueprint_id, field_type, item_id, ai_value, corrected_value, created_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+        [randomUUID(), blueprintId, c.fieldType, c.itemId, String(c.aiValue), String(c.correctedValue), now],
+      );
+    }
+    res.json({ saved: corrections.length });
+  } catch (err) {
+    console.error('[blueprint/feedback] error:', (err as Error).message);
+    res.status(500).json({ error: 'שגיאה בשמירת פידבק' });
   }
 });
 

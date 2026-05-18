@@ -64,8 +64,8 @@ export default function BlueprintPage() {
     if (!file) return;
     setAnalysisState({ status: 'analyzing', analysis: null, error: null, isMock: false });
     try {
-      const { analysis, isMock } = await analyzeBlueprint(file.dataUrl, file.name);
-      setAnalysisState({ status: 'review', analysis, error: null, isMock });
+      const { analysis, isMock, blueprintId } = await analyzeBlueprint(file.dataUrl, file.name);
+      setAnalysisState({ status: 'review', analysis, blueprintId, error: null, isMock });
       setShowReview(true);
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'שגיאה לא ידועה בניתוח התוכנית';
@@ -341,6 +341,7 @@ export default function BlueprintPage() {
           /* ── AI Review screen (replaces canvas) ── */
           <BlueprintAiReview
             analysis={analysisState.analysis}
+            blueprintId={analysisState.blueprintId}
             isMock={analysisState.isMock}
             onApprove={handleApproveAnalysis}
             onBack={handleBackFromReview}

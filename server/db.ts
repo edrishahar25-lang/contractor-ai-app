@@ -35,6 +35,18 @@ export async function initDb(): Promise<void> {
       created_at   TEXT NOT NULL,
       updated_at   TEXT NOT NULL
     );
+
+    CREATE TABLE IF NOT EXISTS blueprint_feedback (
+      id           TEXT PRIMARY KEY,
+      blueprint_id TEXT NOT NULL,
+      field_type   TEXT NOT NULL,
+      item_id      TEXT NOT NULL,
+      ai_value     TEXT NOT NULL,
+      corrected_value TEXT NOT NULL,
+      created_at   TEXT NOT NULL
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_feedback_created ON blueprint_feedback(created_at DESC);
   `);
 
   console.log('[db] PostgreSQL connected');

@@ -56,6 +56,7 @@ interface ClientInfo {
 
 interface Props {
   analysis: AiBlueprintAnalysis;
+  blueprintId?: string;
   isMock: boolean;
   onApprove: (approvedAnalysis: AiBlueprintAnalysis, client: ClientInfo) => void;
   onBack: () => void;
@@ -63,7 +64,7 @@ interface Props {
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
-export default function BlueprintAiReview({ analysis, isMock, onApprove, onBack }: Props) {
+export default function BlueprintAiReview({ analysis, blueprintId, isMock, onApprove, onBack }: Props) {
   const [rooms, setRooms] = useState<AiDetectedRoom[]>(analysis.rooms);
   const [workItems, setWorkItems] = useState<AiDetectedWorkItem[]>(analysis.detectedWorkItems);
 
@@ -145,8 +146,41 @@ export default function BlueprintAiReview({ analysis, isMock, onApprove, onBack 
     return Object.keys(errs).length === 0;
   }
 
-  function handleConfirm() {
+  async function handleConfirm() {
     if (!validate()) return;
+
+    if (blueprintId && !isMock) {
+      const corrections: Array<{ fieldType: string; itemId: string; aiValue: string | number; correctedValue: string | number }> = [];
+
+      rooms.forEach((room) => {
+        const original = analysis.rooms.find((r) => r.id === room.id);
+        if (original && room.status === 'edited' && room.estimatedSqm !== original.estimatedSqm) {
+          corrections.push({ fieldType: 'room_sqm', itemId: room.name, aiValue: original.estimatedSqm, correctedValue: room.estimatedSqm });
+        }
+        if (original && room.status === 'rejected') {
+          corrections.push({ fieldType: 'room_rejected', itemId: room.name, aiValue: original.estimatedSqm, correctedValue: 'rejected' });
+        }
+      });
+
+      workItems.forEach((item) => {
+        const original = analysis.detectedWorkItems.find((it) => it.id === item.id);
+        if (original && item.status === 'edited' && item.quantity !== original.quantity) {
+          corrections.push({ fieldType: 'work_qty', itemId: item.itemId, aiValue: original.quantity, correctedValue: item.quantity });
+        }
+        if (original && item.status === 'rejected') {
+          corrections.push({ fieldType: 'work_rejected', itemId: item.itemId, aiValue: original.quantity, correctedValue: 'rejected' });
+        }
+      });
+
+      if (corrections.length > 0) {
+        fetch(`/api/blueprint/${blueprintId}/feedback`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ corrections }),
+        }).catch(() => { /* non-fatal */ });
+      }
+    }
+
     const approvedAnalysis: AiBlueprintAnalysis = {
       ...analysis,
       rooms,

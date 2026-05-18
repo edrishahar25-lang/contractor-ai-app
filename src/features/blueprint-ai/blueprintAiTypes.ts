@@ -62,6 +62,7 @@ export interface AiBlueprintAnalysis {
 export interface AiAnalysisState {
   status: AiAnalysisStatus;
   analysis: AiBlueprintAnalysis | null;
+  blueprintId?: string;
   error: string | null;
   isMock: boolean;
 }
